@@ -59,6 +59,9 @@ def main():
         gs = {r['gsis_id']: r['sleeper_id'] for r in csv.DictReader(open(rp, encoding='utf-8')) if r.get('sleeper_id')}
     prac = {}
     ip = os.path.join(CACHE, f'injuries_{season}.csv')
+    # fetch it here (6-hour cache shared with weekly.py): injuries.py runs BEFORE weekly.py, and reading
+    # the cached copy alone showed Thursday's practice status on Saturday (Evans DNP vs Friday's Limited)
+    W.fetch(f'{W.BASE}/injuries/injuries_{season}.csv', ip, 6 * 3600)
     for r in csv.DictReader(open(ip, encoding='utf-8')) if os.path.exists(ip) else []:
         sid = gs.get(r['gsis_id'])
         if sid and r['week'].isdigit() and int(r['week']) >= prac.get(sid, {}).get('week', 0):
