@@ -143,8 +143,8 @@ def main():
     # ---- king's-ransom asks: what each premium asset would cost each team ----
     # A package qualifies when the value coming back (our contract-adjusted view; picks at pick_value)
     # is at least premium x the asset's value. Among qualifying 1-3 asset packages from each team
-    # (their top players + their future picks), keep the one they overpay least by on the market —
-    # the ask most likely to be heard — and replay your season with it.
+    # (their top players + their future picks): of the 30 they overpay least on, the one that adds the most
+    # expected wins for you this season (ties -> the smaller overpay, the likelier to be heard).
     owned = PK.owned_future_picks()
     ransom = []
     for a in [x for x in give_all if x in premium]:
@@ -161,21 +161,23 @@ def main():
                 v, tier = PK.pick_value(season, rnd, orig)
                 if v >= 500:
                     assets.append((f'pick:{season}:{rnd}:{orig}', v, v, f'{season} {tier} {PK._RN.get(rnd, rnd)} ({names.get(orig)})'))
-            best = None
+            qual = []
             for k in (1, 2, 3, 4):
                 for combo in combinations(assets, k):
                     got = sum(x[side] for x in combo)
-                    if got < need:
-                        continue
-                    over = sum(x[2] for x in combo) - gmkt(a)
-                    if best is None or over < best[0]:
-                        best = (over, combo, got)
-            if not best:
+                    if got >= need:
+                        qual.append((sum(x[2] for x in combo) - gmkt(a), combo, got))
+            if not qual:
                 continue
-            over, combo, got = best
+            # among the 30 qualifying packages they overpay least on, take the one that helps YOUR season
+            # most (you are contending), ties broken by the smaller overpay — the likeliest to be heard
+            scored = []
+            for over, combo, got in sorted(qual, key=lambda q: q[0])[:30]:
+                gp = [x[0] for x in combo if not x[0].startswith('pick:')]
+                dw_ = exp_wins(my_rid, [p for p in my_act if p != a] + gp) - base[my_rid]
+                scored.append((round(dw_, 2), -over, over, combo, got))
+            dw, _, over, combo, got = max(scored)
             gp = [x[0] for x in combo if not x[0].startswith('pick:')]
-            my_after = [p for p in my_act if p != a] + gp
-            dw = exp_wins(my_rid, my_after) - base[my_rid]
             their_after = [p for p in active(r) if pos_of(p) in LF.POS and p not in gp] + ([a] if not a.startswith('pick:') else [])
             tdw = exp_wins(rid, their_after) - base[rid]
             ransom.append({'asset': a, 'asset_label': label(a), 'rule': (f'+{surplus:,.0f} in your favor' if surplus is not None
@@ -205,8 +207,7 @@ def main():
         M.append('| — | no offer passes both sides right now | | | | | | |')
     M += ['', "## King's ransom — what each core asset would cost", '',
           '_No one is untouchable; the core just needs a king\'s ransom (config `premium`): for the core, the trade evaluation must '
-          'favor you by +9,000 or more on market value. Per team, the cheapest qualifying package of up to 4 of their assets — the ask they are most likely '
-          'to hear. "Their overpay" is how far above market they would have to go; the smaller, the likelier._', '']
+          'favor you by the configured surplus (e.g. +3,000) or more on market value. Per team, among the cheapest qualifying packages of up to 4 of their assets, the one that helps your season most. "Their overpay" is how far above market they would have to go; the smaller, the likelier._', '']
     for a in dict.fromkeys(x['asset'] for x in ransom):
         rows_ = [x for x in ransom if x['asset'] == a][:4]
         M += [f"**{rows_[0]['asset_label']}** (value {rows_[0]['value_given']:,}; rule {rows_[0]['rule']} = needs {rows_[0]['need']:,} back)", '',

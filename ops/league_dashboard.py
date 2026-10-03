@@ -544,7 +544,7 @@ def build():
         rs = tf.get('ransom') or []
         if rs:
             O.append('<div class="card"><h3>King\'s ransom: what the core would cost</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
-                     'Rule: the evaluation must favor you by +9,000 or more on market value. The cheapest qualifying package per team, '
+                     'Rule: the evaluation must favor you by +3,000 or more on market value. The cheapest qualifying package per team, '
                      'the two likeliest shown.</div>')
             for a in dict.fromkeys(x['asset'] for x in rs):
                 rr = [x for x in rs if x['asset'] == a][:2]
