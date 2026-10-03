@@ -42,7 +42,7 @@ def self_update():
         if r.returncode != 0:
             print(f'(framework update skipped: {(r.stderr or r.stdout).strip()[:200]})')
         elif before != after:
-            print(f'Framework updated {before} -> {after}; restarting with the new version.')
+            print(f'Framework updated {before} -> {after}; restarting with the new version.', flush=True)
             os.execv(sys.executable, [sys.executable] + sys.argv + ['--no-pull'])
         else:
             print('Framework is up to date.')
