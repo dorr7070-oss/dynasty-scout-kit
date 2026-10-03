@@ -37,6 +37,7 @@ K_SHRINK, K_FORM = 300, 3
 # Sleeper team code -> nflverse code. Sleeper writes the Rams 'LAR', nflverse 'LA'; missing this
 # zeroed every Rams player as 'bye' (caught 2026-10-02 in the kit test: Davante Adams 14.7 -> 0).
 SLEEPER_TO_NV = {'LAR': 'LA'}
+INJ = {}   # measured game-day odds by status|practice, loaded in live()
 MARKET = ('implied', 'matchup')
 CONDITIONS = ('wind', 'temp', 'precip', 'rest', 'travel', 'backup_qb')
 # Extremes only: the backtest (2026-10-02) showed blanket multipliers HURT — Sleeper already prices
@@ -290,6 +291,9 @@ def live():
     P = json.load(open(os.path.join(DATA, 'players.json')))
     R = json.load(open(os.path.join(DATA, str(season), 'rosters.json')))
     U = {u['user_id']: u['display_name'] for u in json.load(open(os.path.join(DATA, str(season), 'users.json')))}
+    _ip = os.path.join(DATA, 'injury_effects.json')
+    global INJ
+    INJ = json.load(open(_ip))['gameday'] if os.path.exists(_ip) else {}
     sl, fm, mi = sleeper_week(season, week), S.form(week), S.matchup_index(week)
     games = {}
     for g in S.week_games(week):
@@ -330,15 +334,16 @@ def live():
             if status in out_status or pr.get('report') == 'Out':
                 proj, why = 0.0, f"OUT ({pr.get('injury') or p.get('injury_body_part') or status})"
                 row['flags'].append(why)
-            elif status == 'Doubtful' or pr.get('report') == 'Doubtful':
-                proj *= 0.25
-                row['flags'].append('Doubtful')
-            elif status == 'Questionable' or pr.get('report') == 'Questionable':
-                if 'Did Not' in (pr.get('practice') or ''):
-                    proj *= 0.7
-                    row['flags'].append('Questionable + did not practice')
-                else:
-                    row['flags'].append(f"Questionable ({pr.get('practice') or 'no practice report yet'})")
+            elif status in ('Doubtful', 'Questionable') or pr.get('report') in ('Doubtful', 'Questionable'):
+                # Measured game-day odds (ops/injury_study.py): how often players with this status and
+                # practice level actually took a snap, 2015-2025. Applied in the LINEUP step, where a
+                # same-or-later-kickoff bench fallback makes the decision free (decide at inactives).
+                st_ = 'Doubtful' if (status == 'Doubtful' or pr.get('report') == 'Doubtful') else 'Questionable'
+                pl = 'DNP' if 'Did Not' in (pr.get('practice') or '') else 'Limited' if 'Limited' in (pr.get('practice') or '') \
+                    else 'Full' if 'Full' in (pr.get('practice') or '') else 'none'
+                g = (INJ.get(f'{st_}|{pl}') or INJ.get(f'{st_}|none') or {})
+                row['p_play'] = g.get('p_play', 0.25 if st_ == 'Doubtful' else 0.7)
+                row['flags'].append(f"{st_} ({pr.get('practice') or 'no practice report yet'}) — plays {row['p_play']:.0%} historically")
             w = ctx['weather']
             if isinstance(w, dict) and (w['wind'] >= 15 or w['snow'] >= 0.5 or w['rain'] >= 5):
                 row['flags'].append(f"weather: {w['wind']:.0f} mph wind, {w['temp']:.0f}F"
@@ -348,22 +353,47 @@ def live():
             if ctx['backup_qb'] == 'backup' and pos != 'QB':
                 row['flags'].append('backup QB starting')
             row.update(proj=round(proj, 1), form_ppg=round(pts / n, 1) if n else None, opp=ctx['opp'],
-                       kickoff=ctx['kickoff'], implied_pts=ctx['implied_pts'], weather=w,
+                       kickoff=ctx['kickoff'], ko=f"{games[nvt]['gameday']} {games[nvt]['gametime']}", implied_pts=ctx['implied_pts'], weather=w,
                        adjustments={f: {'bucket': b, 'mult': x} for f, (b, x) in parts.items()})
             players[pid] = row
 
+    flex_pos = set().union(*LF.FLEX_SLOTS) if LF.FLEX_SLOTS else set()
     teams = {}
     for r in R:
         mine = [pid for pid in (r.get('players') or []) if pid in players
                 and pid not in (r.get('taxi') or []) and pid not in (r.get('reserve') or [])]
-        total, best = LF.best_lineup_ids((players[p]['proj'], p, players[p]['pos']) for p in mine)
+
+        def hedge(pid, lineup):
+            """Best healthy BENCH player (not in `lineup`) who can fill his slot and kicks off at the same
+            time or later — the swap you make when he is ruled inactive."""
+            x = players[pid]
+            elig = flex_pos if x['pos'] in flex_pos else {x['pos']}
+            cands = [q for q in mine if q != pid and q not in lineup and players[q]['pos'] in elig and players[q]['proj'] > 0
+                     and 'p_play' not in players[q] and (players[q].get('ko') or '') >= (x.get('ko') or '~')]
+            return max(cands, key=lambda q: players[q]['proj'], default=None)
+
+        # pass 1: game-time players at full value (assume a fallback exists); pass 2: discount the ones
+        # whose lineup has no bench fallback by their measured odds of playing, and re-pick the lineup
+        _, first = LF.best_lineup_ids((players[p]['proj'], p, players[p]['pos']) for p in mine)
+        unhedged = {p for p in mine if 'p_play' in players[p] and not hedge(p, first)}
+
+        def lineup_val(pid):
+            x = players[pid]
+            return x['proj'] * x['p_play'] if pid in unhedged else x['proj']
+        total, best = LF.best_lineup_ids((lineup_val(p), p, players[p]['pos']) for p in mine)
         set_now = [p for p in (r.get('starters') or []) if p in players]
-        cur = sum(players[p]['proj'] for p in set_now)
+        cur = sum(lineup_val(p) for p in set_now)
         ins = [p for p in best if p not in set_now]
         outs = [p for p in set_now if p not in best]
+        plans = []
+        for p in best:
+            if 'p_play' in players[p]:
+                h = hedge(p, best)
+                plans.append({'pid': p, 'p_play': players[p]['p_play'], 'fallback': h,
+                              'lock': players[p].get('kickoff')})
         teams[r['roster_id']] = {'owner': U.get(r.get('owner_id')), 'best': best, 'best_total': round(total, 1),
                                  'set': set_now, 'set_total': round(cur, 1), 'gain': round(total - cur, 1),
-                                 'swap_in': ins, 'swap_out': outs}
+                                 'swap_in': ins, 'swap_out': outs, 'gametime_plans': plans}
     json.dump({'season': season, 'week': week, 'model': chosen, 'generated': time.strftime('%Y-%m-%d %H:%M'),
                'players': players, 'teams': teams}, open(os.path.join(DATA, 'weekly.json'), 'w'))
     me = json.load(open(os.path.join(ROOT, 'config.json'))).get('my_username')

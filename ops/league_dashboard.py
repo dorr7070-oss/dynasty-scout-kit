@@ -456,6 +456,13 @@ def build():
                     f'Coin flip only (+{gain:.1f} pts) — leave it unless news breaks')
             O.append(f'<section><div class="kicker">Week {esc(wkj["week"])}</div><h2 class="disp">Start / Sit</h2>'
                      f'<p class="lede"><b>{head}.</b> {_model_line(wkj["model"])} Updated {esc(wkj["generated"])}.</p><div class="card">')
+            for pl_ in t.get('gametime_plans') or []:
+                x_ = PL[pl_['pid']]
+                fb = PL[pl_['fallback']]['name'] if pl_.get('fallback') else None
+                O.append(f'<p class="lede" style="margin-top:-4px">⏱ <b>{esc(x_["name"])}</b> plays {pl_["p_play"]:.0%} of the time with this '
+                         f'status and practice level. ' + (f'Keep him in; if he is inactive (about 90 min before his {esc(pl_["lock"])} kickoff), '
+                         f'swap in <b>{esc(fb)}</b>.' if fb else f'No later-kickoff fallback on the bench, so his projection is discounted to '
+                         f'{x_["proj"] * pl_["p_play"]:.1f}.') + '</p>')
             mx = max([PL[p]['proj'] for p in t['best'] + t['set']] + [1])
             bench = sorted((p for p in PL if PL[p]['roster_id'] == my_rid and p not in t['best']),
                            key=lambda p: -PL[p]['proj'])[:5]
@@ -516,6 +523,68 @@ def build():
                          f'<span class="sig">#1 pick {t["p_1"]:.0%} · expected slot {t["exp_slot"]:.1f} · 1st owned by <b>{esc(t["r1"]["owner"])}</b> '
                          f'(worth {t["r1"]["value"]:,}) · 2nd owned by {esc(t.get("r2", {}).get("owner", "—"))}</span></div>')
             O.append('</div></section>')
+
+    # ---- edge finder: trade finder, waivers, injuries, market movers (2026-10-02) ----
+    def _j(name):
+        p_ = os.path.join(ROOT, 'data', name)
+        return json.load(open(p_)) if os.path.exists(p_) else None
+    tf, wv, io, vt = _j('trade_finder.json'), _j('waivers.json'), _j('injury_outlook.json'), _j('value_trends.json')
+    if tf and tf.get('best_by_partner'):
+        O.append('<section><div class="kicker">Edge finder</div><h2 class="disp">Trade Finder</h2>'
+                 f'<p class="lede">The best offer to each owner, tested on both schedules: expected wins it adds for you over the rest '
+                 f'of the season (now {tf["base_wins"]:.1f}), and the reason the other owner says yes. Untouchables and kept picks are '
+                 'never offered.</p><div class="card">')
+        for o in tf['best_by_partner'][:8]:
+            O.append(f'<div class="crow"><span class="nm"><b>{esc(o["get_label"])}</b> <small>{esc(o["get_pos"])} from @{esc(o["partner"])} '
+                     f'({o["playoff"]:.0%} playoffs)</small></span>'
+                     f'<span class="track"><span class="fill" style="width:{min(100, o["my_wins"] * 100):.0f}%;background:var(--good)"></span></span>'
+                     f'<span class="v num">+{o["my_wins"]:.2f}</span>'
+                     f'<span class="sig">Give {esc(" + ".join(o["give_labels"]))} · your value {o["my_value"]:+,} · theirs {o["their_value"]:+,}'
+                     f'{" · they must drop one" if o["they_must_drop"] else ""}</span></div>')
+        O.append('</div></section>')
+    if wv or io or vt:
+        O.append('<section><div class="kicker">Edge finder</div><h2 class="disp">Waivers, Injuries &amp; Market Movers</h2><div class="cols">')
+        if wv:
+            fa = wv['faab']
+            O.append(f'<div class="card"><h3>Waivers · ${wv["budget_left"]} FAAB left</h3>'
+                     f'<div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">This league\'s winning bids: median ${fa["median"]}, '
+                     f'top quarter ${fa["p75"]}+, top 10% ${fa["p90"]}+ (n={fa["n"]}).</div>')
+            rows_ = [(x, 'starts') for x in wv['start'][:4]] + [(x, 'rising') for x in wv['rising'][:5]]
+            for x, why in rows_:
+                tag = f'+{x["gain"]}/wk' if why == 'starts' else f'RZ {x["rz"]:.0%} · tgt {(x["tgt_share"] or 0):.0%}'
+                O.append(f'<div class="prow"><span class="pos">{esc(x["pos"])}</span><span>{esc(x["name"])} '
+                         f'<small style="color:var(--muted)">{esc(x["team"])} · {tag}</small></span><span class="age">{x["ros"]}</span>'
+                         f'<span class="vv num">${x["bid"]}</span></div>')
+            if not wv['start']:
+                O.append('<div style="font-size:12px;color:var(--muted)">No free agent would start for you right now.</div>')
+            O.append('</div>')
+        if io:
+            mine_ = [x for x in io['players'] if x['owner'] == MY][:6]
+            sig_ = [x for x in io['players'] if x.get('signal')][:3]
+            O.append('<div class="card"><h3>Injury outlook</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
+                     'Measured on 2015-2025: game-day odds by practice status; games missed by injury type.</div>')
+            for x in mine_ + [s for s in sig_ if s not in mine_]:
+                O.append(f'<div class="prow"><span class="pos">{esc(x["pos"])}</span><span>{esc(x["name"])} '
+                         f'<small style="color:var(--muted)">{esc(x["status"])} · {esc(x["injury"])} — {esc(x.get("read", ""))}'
+                         f'{" · " + esc(x["signal"]) if x.get("signal") else ""}</small></span><span class="age"></span>'
+                         f'<span class="vv num">{x["value"]:,}</span></div>')
+            O.append('</div>')
+        if vt and vt.get('movers'):
+            mv_ = [m for m in vt['movers'] if m['owner'] == MY][:4] + [m for m in vt['movers'] if m['owner'] != MY][:6]
+            pc = lambda v: '—' if v is None else f'{v:+.0%}'
+            O.append(f'<div class="card"><h3>Market movers</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
+                     f'Market value vs {esc(vt.get("ref_7d") or "—")} (7d) and {esc(vt.get("ref_30d") or "—")} (30d).</div>')
+            long_out = {x['pid']: x for x in (io or {}).get('players', [])
+                        if (x.get('season_share_lost') or 0) >= 0.5 or 'season-ending' in (x.get('read') or '')}
+            for m in mv_:
+                if m['pid'] in long_out and m['tag'] == 'crashing':
+                    m = dict(m, action='falling on a long injury (see Injury outlook), so the drop is priced in, not a bargain')
+                col = 'var(--good)' if m['tag'] == 'rising' else 'var(--crit)'
+                O.append(f'<div class="prow"><span class="pos">{esc(m["pos"])}</span><span>{esc(m["name"])} '
+                         f'<small style="color:var(--muted)">@{esc(m["owner"])} · {esc(m["action"])}</small></span>'
+                         f'<span class="age" style="color:{col}">{pc(m["w"])}</span><span class="vv num" style="color:{col}">{pc(m["m"])}</span></div>')
+            O.append('</div>')
+        O.append('</div></section>')
 
     # ---- where my starters stand (chart) ----
     ps = _pos_strength()

@@ -10,5 +10,7 @@
     "fantasypros": true,
     "etr_csv": "data/values/etr.csv"
   },
-  "my_name": ""
+  "my_name": "",
+  "untouchable": [],
+  "keep": []
 }

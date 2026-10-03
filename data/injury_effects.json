@@ -1,0 +1,227 @@
+{
+ "window": "2015-2025 regular seasons",
+ "gameday": {
+  "Doubtful|DNP": {
+   "n": 425,
+   "p_play": 0.009
+  },
+  "Doubtful|Limited": {
+   "n": 133,
+   "p_play": 0.015
+  },
+  "Questionable|DNP": {
+   "n": 704,
+   "p_play": 0.422
+  },
+  "Questionable|Full": {
+   "n": 906,
+   "p_play": 0.776
+  },
+  "Questionable|Limited": {
+   "n": 2994,
+   "p_play": 0.661
+  },
+  "Questionable|none": {
+   "n": 51,
+   "p_play": 0.706
+  }
+ },
+ "missed": {
+  "knee": {
+   "n": 308,
+   "median": 3.0,
+   "mean": 3.7,
+   "p75": 5,
+   "p_season_ending": 0.308,
+   "p_back_in_1": 0.244,
+   "more_given_missed": {
+    "1": 2,
+    "2": 2,
+    "3": 3,
+    "4": 3.0,
+    "6": 3.5
+   }
+  },
+  "concussion": {
+   "n": 305,
+   "median": 1,
+   "mean": 2.3,
+   "p75": 3,
+   "p_season_ending": 0.275,
+   "p_back_in_1": 0.511,
+   "more_given_missed": {
+    "1": 2,
+    "2": 2,
+    "3": 3.0,
+    "4": 3,
+    "6": 2
+   }
+  },
+  "ankle": {
+   "n": 284,
+   "median": 2.0,
+   "mean": 3.1,
+   "p75": 4,
+   "p_season_ending": 0.299,
+   "p_back_in_1": 0.313,
+   "more_given_missed": {
+    "1": 2,
+    "2": 2,
+    "3": 2.0,
+    "4": 2.0,
+    "6": 2
+   }
+  },
+  "hamstring": {
+   "n": 262,
+   "median": 2.0,
+   "mean": 3.1,
+   "p75": 4,
+   "p_season_ending": 0.164,
+   "p_back_in_1": 0.302,
+   "more_given_missed": {
+    "1": 2,
+    "2": 2,
+    "3": 2,
+    "4": 2,
+    "6": 4
+   }
+  },
+  "shoulder": {
+   "n": 132,
+   "median": 2.0,
+   "mean": 3.4,
+   "p75": 4,
+   "p_season_ending": 0.288,
+   "p_back_in_1": 0.364,
+   "more_given_missed": {
+    "1": 2.0,
+    "2": 3,
+    "3": 4.0,
+    "4": 5,
+    "6": 5.0
+   }
+  },
+  "foot": {
+   "n": 129,
+   "median": 3,
+   "mean": 4.4,
+   "p75": 6,
+   "p_season_ending": 0.38,
+   "p_back_in_1": 0.217,
+   "more_given_missed": {
+    "1": 3,
+    "2": 3.0,
+    "3": 3,
+    "4": 3.0,
+    "6": 4.0
+   }
+  },
+  "back": {
+   "n": 83,
+   "median": 3,
+   "mean": 4.1,
+   "p75": 6,
+   "p_season_ending": 0.542,
+   "p_back_in_1": 0.313,
+   "more_given_missed": {
+    "1": 3,
+    "2": 4.0,
+    "3": 3,
+    "4": 4.0,
+    "6": 3
+   }
+  },
+  "arm/hand": {
+   "n": 79,
+   "median": 3,
+   "mean": 3.8,
+   "p75": 5,
+   "p_season_ending": 0.418,
+   "p_back_in_1": 0.253,
+   "more_given_missed": {
+    "1": 3,
+    "2": 3.0,
+    "3": 2.5,
+    "4": 3.0
+   }
+  },
+  "ribs": {
+   "n": 73,
+   "median": 2,
+   "mean": 2.9,
+   "p75": 4,
+   "p_season_ending": 0.26,
+   "p_back_in_1": 0.329,
+   "more_given_missed": {
+    "1": 2,
+    "2": 2,
+    "3": 1.5
+   }
+  },
+  "groin": {
+   "n": 60,
+   "median": 2.0,
+   "mean": 3.1,
+   "p75": 4,
+   "p_season_ending": 0.25,
+   "p_back_in_1": 0.45,
+   "more_given_missed": {
+    "1": 2,
+    "2": 2.0,
+    "3": 4
+   }
+  },
+  "hip": {
+   "n": 60,
+   "median": 3.0,
+   "mean": 4.0,
+   "p75": 6,
+   "p_season_ending": 0.367,
+   "p_back_in_1": 0.217,
+   "more_given_missed": {
+    "1": 3,
+    "2": 3.0,
+    "3": 3,
+    "4": 3
+   }
+  },
+  "calf": {
+   "n": 59,
+   "median": 2,
+   "mean": 3.1,
+   "p75": 4,
+   "p_season_ending": 0.271,
+   "p_back_in_1": 0.271,
+   "more_given_missed": {
+    "1": 2,
+    "2": 2.0,
+    "3": 3
+   }
+  },
+  "quadriceps": {
+   "n": 46,
+   "median": 3.0,
+   "mean": 3.7,
+   "p75": 5,
+   "p_season_ending": 0.326,
+   "p_back_in_1": 0.239,
+   "more_given_missed": {
+    "1": 3,
+    "2": 2,
+    "3": 3.0
+   }
+  },
+  "illness": {
+   "n": 30,
+   "median": 2.0,
+   "mean": 2.3,
+   "p75": 2,
+   "p_season_ending": 0.267,
+   "p_back_in_1": 0.467,
+   "more_given_missed": {
+    "1": 1.0
+   }
+  }
+ }
+}
