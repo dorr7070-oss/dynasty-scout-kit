@@ -32,7 +32,10 @@ def _owner(rid):
 
 
 def V(pid):
-    return cons.get(str(pid), {}).get('mean', 0)
+    # Neutral market value for every owner (owner's instruction 2026-10-02: don't skew the evaluation
+    # against any one team). The contract-adjusted `mean` is a forward-looking view, not a trade grade.
+    c = cons.get(str(pid), {})
+    return c.get('mean_market', c.get('mean', 0))
 
 
 def pname(pid):
@@ -85,7 +88,7 @@ def main():
     trades.sort(key=lambda x: -x[0])
     L = ['# Trade Grades — tier-aware pick values',
          '',
-         f'_Generated {datetime.date.today().isoformat()}. Players at corrected consensus; '
+         f'_Generated {datetime.date.today().isoformat()}. Players at neutral market value (consensus mean_market, same for every owner); '
          'picks by TIER (Early/Mid/Late = original owner projected bottom-4/middle-4/top-4), '
          'each the average of the FantasyCalc slot curve over that third of the round x year '
          'discount. Current values = hindsight. 2028 tiers use confirmed trajectory reads '

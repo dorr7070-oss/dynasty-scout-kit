@@ -9,7 +9,7 @@ reason to accept.
 
   your side    expected wins added: your remaining schedule replayed with the swap (opponents fixed,
                Sleeper weekly projections, best legal lineup each week), each game's win chance =
-               Phi(margin / 31); plus dynasty value change on OUR contract-adjusted consensus
+               Phi(margin / 31); plus dynasty value change on neutral market value (same scale both sides)
   their side   market value change (consensus market value: what they and KTC see) and their own
                expected-wins change on their schedule. Acceptance by window:
                  contender (playoff odds >= 60%): won't lose real points (>= -0.15 wins) and gets
@@ -47,7 +47,9 @@ def main():
     P = json.load(open(os.path.join(DATA, 'players.json')))
     pos_of = lambda pid: (P.get(pid) or {}).get('position')
     cons = json.load(open(os.path.join(DATA, 'values', 'consensus.json')))
-    adj = lambda pid: cons.get(pid, {}).get('mean', 0)
+    # Both sides on the same neutral market value (owner's instruction 2026-10-02: don't skew the
+    # evaluation against your own team). Contract-year effects show up in expected wins and the calendar.
+    adj = lambda pid: cons.get(pid, {}).get('mean_market', cons.get(pid, {}).get('mean', 0))
     mkt = lambda pid: cons.get(pid, {}).get('mean_market', cons.get(pid, {}).get('mean', 0))
     cfg = json.load(open(os.path.join(ROOT, 'config.json')))
     me = cfg.get('my_username')
@@ -194,7 +196,7 @@ def main():
            'rebuilder': 'they gain market value while rebuilding', 'middle': 'value and points both hold for them'}
     M = [f'# Trade Finder — from week {wk_now}', '',
          f'_Expected wins rest of season now: {base[my_rid]:.2f}. Every 1-for-1 and 2-for-1 with each owner tested on both '
-         f'schedules ({len(offers):,} passed the filters). Values: yours = contract-adjusted consensus, theirs = market. '
+         f'schedules ({len(offers):,} passed the filters). Values: neutral market value on both sides. '
          f'Core assets are never in these: they only move for a king\'s ransom (below)._', '',
          '## Best offer to each owner', '',
          '| Owner | You give | You get | +Wins you | Your value | Their value | Their wins | Why they say yes |',

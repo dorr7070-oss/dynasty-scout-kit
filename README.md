@@ -30,6 +30,10 @@ Then:
 A GitHub copy updates itself every time you say "update everything" (it pulls the latest framework
 first; your settings, data and notes are never touched).
 
+**Build your strategy:** once it's set up, say **"Build my strategy."** Claude studies your team, the league and the
+draft classes, asks you a few questions (win now or rebuild, who your core is, what it would take to trade them),
+and writes the plan down so every trade and lineup call is judged against it. The full prompt is in `STRATEGY.md`.
+
 Then just talk to it: "update everything", "run a review", "should I take this trade?",
 "set my lineup", "who are the top 2028 prospects?"
 

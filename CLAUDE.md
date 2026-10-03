@@ -61,8 +61,10 @@ what needs them (installing the app, clicking Allow, creating their own accounts
 4. **Phase 4:** run the pipeline (`python update.py` / `./update.sh`). If you have an Artifact/publish tool,
    publish `dashboards/league.html` and `dashboards/assets.html` (private by default; the owner turns on
    sharing with the page's Share button). Otherwise open them in the browser (`start dashboards\league.html`
-   on Windows, `open dashboards/league.html` on Mac). Then do a full league review and help the owner write
-   their **CURRENT STRATEGY**.
+   on Windows, `open dashboards/league.html` on Mac). Then do a full league review and run the strategy
+   session in **`STRATEGY.md`** with the owner (window, core, king's-ransom rule, holes, picks, checkpoints),
+   which writes their **CURRENT STRATEGY**. Whenever the owner says "build my strategy" (or anything like
+   it, e.g. "help me plan my team"), follow STRATEGY.md.
 5. **Phases 5-8 are optional.** Offer them in order and explain the risk line from ONBOARDING.md for each.
    The college-stats key is entered by the owner in a terminal with `set_cfbd_key.py`. **Never ask for the
    key or any password in chat.** For phase 6, create routines with your scheduled-task tool if you have one;

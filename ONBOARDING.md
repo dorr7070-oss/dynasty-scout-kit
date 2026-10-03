@@ -114,7 +114,7 @@ and `dashboards` folders inside the kit.**
 3. Shows them to you. If your Claude can **publish artifacts**, it publishes them as private web
    pages you can open on your phone; sharing is off until you turn it on with the page's
    **Share** button. Otherwise it opens the files in your browser.
-4. Reviews your team with you and writes your **CURRENT STRATEGY** into your profile, so every
+4. Reviews your team with you and runs the strategy session in `STRATEGY.md` (say **"Build my strategy"** any time to redo it), writing your **CURRENT STRATEGY** into your profile, so every
    later trade is judged against a plan.
 
 **It worked when:** you can see both dashboards headed with your team name, and `doctor.py`
