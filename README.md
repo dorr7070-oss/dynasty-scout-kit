@@ -41,6 +41,8 @@ Then just talk to it: "update everything", "run a review", "should I take this t
   college class against your picks on the same value scale.
 - **Trade analysis** on KeepTradeCut (in your league's format) and league-calibrated values, plus playoff-odds simulation.
 - **Draft-order model** for your league's rule (reverse record, lotteries, Max PF), so pick values are realistic.
+- **Lottery Tracker:** every team's next 1st and 2nd: who owns it, its top-3 and #1 odds, its value, and how that moves week to week (LOTTERY.md + dashboard).
+- **Weekly start/sit:** your best lineup vs the one you set, using injuries, practice reports, Vegas lines, backup-QB starts and the stadium forecast.
 - **Owner profiles** that learn each manager's habits; your notes stay private to your machine.
 
 Optional: a free CollegeFootballData.com key adds real college stats to every prospect
