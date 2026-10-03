@@ -1,0 +1,14 @@
+{
+  "platform": "",
+  "league_id": "",
+  "league_url": "",
+  "my_username": "",
+  "value_sources": {
+    "fantasycalc": true,
+    "keeptradecut": true,
+    "dynastyprocess": true,
+    "fantasypros": true,
+    "etr_csv": "data/values/etr.csv"
+  },
+  "my_name": ""
+}

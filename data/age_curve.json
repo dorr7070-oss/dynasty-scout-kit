@@ -1,0 +1,168 @@
+{
+ "method": "year-over-year PPR retention, washouts counted as zero",
+ "seasons": [
+  2019,
+  2025
+ ],
+ "qualify": {
+  "games": 10,
+  "ppg": 10.0
+ },
+ "break_threshold": 0.85,
+ "positions": {
+  "QB": {
+   "curve": [
+    {
+     "age": 22,
+     "retention": 1.0084,
+     "n": 16
+    },
+    {
+     "age": 23,
+     "retention": 0.8628,
+     "n": 21
+    },
+    {
+     "age": 24,
+     "retention": 0.8637,
+     "n": 22
+    },
+    {
+     "age": 25,
+     "retention": 0.7657,
+     "n": 16
+    },
+    {
+     "age": 26,
+     "retention": 0.9034,
+     "n": 13
+    },
+    {
+     "age": 27,
+     "retention": 0.9001,
+     "n": 13
+    },
+    {
+     "age": 28,
+     "retention": 0.6837,
+     "n": 11
+    }
+   ],
+   "baseline": 0.8751,
+   "decline_age": null,
+   "raw_decline_age": 28,
+   "note": "sample too thin to flag"
+  },
+  "RB": {
+   "curve": [
+    {
+     "age": 21,
+     "retention": 1.0065,
+     "n": 11
+    },
+    {
+     "age": 22,
+     "retention": 0.8475,
+     "n": 18
+    },
+    {
+     "age": 23,
+     "retention": 0.7929,
+     "n": 26
+    },
+    {
+     "age": 24,
+     "retention": 0.8442,
+     "n": 36
+    },
+    {
+     "age": 25,
+     "retention": 0.9084,
+     "n": 31
+    },
+    {
+     "age": 26,
+     "retention": 0.808,
+     "n": 22
+    },
+    {
+     "age": 27,
+     "retention": 0.5995,
+     "n": 22
+    },
+    {
+     "age": 28,
+     "retention": 0.7023,
+     "n": 11
+    }
+   ],
+   "baseline": 0.8799,
+   "decline_age": 27,
+   "raw_decline_age": 27,
+   "note": "flagged"
+  },
+  "WR": {
+   "curve": [
+    {
+     "age": 21,
+     "retention": 0.8839,
+     "n": 13
+    },
+    {
+     "age": 22,
+     "retention": 0.9654,
+     "n": 30
+    },
+    {
+     "age": 23,
+     "retention": 0.9064,
+     "n": 44
+    },
+    {
+     "age": 24,
+     "retention": 0.8913,
+     "n": 33
+    },
+    {
+     "age": 25,
+     "retention": 0.8003,
+     "n": 35
+    },
+    {
+     "age": 26,
+     "retention": 0.8365,
+     "n": 37
+    },
+    {
+     "age": 27,
+     "retention": 0.8235,
+     "n": 32
+    },
+    {
+     "age": 28,
+     "retention": 0.7963,
+     "n": 17
+    },
+    {
+     "age": 29,
+     "retention": 0.8371,
+     "n": 15
+    },
+    {
+     "age": 30,
+     "retention": 0.834,
+     "n": 12
+    }
+   ],
+   "baseline": 0.8895,
+   "decline_age": null,
+   "raw_decline_age": null,
+   "note": "no sustained break found"
+  },
+  "TE": {
+   "curve": [],
+   "decline_age": null,
+   "note": "too few qualifying seasons"
+  }
+ }
+}

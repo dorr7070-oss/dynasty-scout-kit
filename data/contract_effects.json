@@ -1,0 +1,449 @@
+{
+ "window": "2018-2021 seasons, outcome next season",
+ "rows": 880,
+ "all": {
+  "walk": {
+   "n": 279,
+   "retention": 0.631,
+   "moved": 0.444,
+   "washout": 0.229
+  },
+  "other": {
+   "n": 601,
+   "retention": 0.828,
+   "moved": 0.125,
+   "washout": 0.111
+  },
+  "effect": 0.762
+ },
+ "cells": {
+  "QB": {
+   "walk": {
+    "n": 43,
+    "retention": 0.643,
+    "moved": 0.442,
+    "washout": 0.302
+   },
+   "other": {
+    "n": 99,
+    "retention": 0.859,
+    "moved": 0.131,
+    "washout": 0.152
+   },
+   "effect": 0.749
+  },
+  "QB|rookie": {
+   "walk": {
+    "n": 8,
+    "retention": 0.787,
+    "moved": 0.375,
+    "washout": 0.125
+   },
+   "other": {
+    "n": 52,
+    "retention": 0.929,
+    "moved": 0.096,
+    "washout": 0.115
+   },
+   "effect": 0.847
+  },
+  "QB|rookie|<=25": {
+   "walk": {
+    "n": 8,
+    "retention": 0.787,
+    "moved": 0.375,
+    "washout": 0.125
+   },
+   "other": {
+    "n": 52,
+    "retention": 0.929,
+    "moved": 0.096,
+    "washout": 0.115
+   },
+   "effect": 0.847
+  },
+  "QB|rookie|26-28": {},
+  "QB|rookie|29+": {},
+  "QB|veteran": {
+   "walk": {
+    "n": 35,
+    "retention": 0.611,
+    "moved": 0.457,
+    "washout": 0.343
+   },
+   "other": {
+    "n": 47,
+    "retention": 0.782,
+    "moved": 0.17,
+    "washout": 0.191
+   },
+   "effect": 0.781
+  },
+  "QB|veteran|<=25": {
+   "walk": {
+    "n": 3,
+    "retention": 0.325,
+    "moved": 0.333,
+    "washout": 0.333
+   },
+   "other": {
+    "n": 6,
+    "retention": 0.648,
+    "moved": 0.0,
+    "washout": 0.333
+   },
+   "effect": 0.502
+  },
+  "QB|veteran|26-28": {
+   "walk": {
+    "n": 7,
+    "retention": 0.829,
+    "moved": 0.571,
+    "washout": 0.429
+   },
+   "other": {
+    "n": 17,
+    "retention": 0.862,
+    "moved": 0.353,
+    "washout": 0.118
+   },
+   "effect": 0.962
+  },
+  "QB|veteran|29+": {
+   "walk": {
+    "n": 25,
+    "retention": 0.584,
+    "moved": 0.44,
+    "washout": 0.32
+   },
+   "other": {
+    "n": 24,
+    "retention": 0.759,
+    "moved": 0.083,
+    "washout": 0.208
+   },
+   "effect": 0.769
+  },
+  "RB": {
+   "walk": {
+    "n": 84,
+    "retention": 0.567,
+    "moved": 0.464,
+    "washout": 0.226
+   },
+   "other": {
+    "n": 166,
+    "retention": 0.803,
+    "moved": 0.145,
+    "washout": 0.108
+   },
+   "effect": 0.706
+  },
+  "RB|rookie": {
+   "walk": {
+    "n": 22,
+    "retention": 0.693,
+    "moved": 0.5,
+    "washout": 0.0
+   },
+   "other": {
+    "n": 113,
+    "retention": 0.817,
+    "moved": 0.08,
+    "washout": 0.106
+   },
+   "effect": 0.848
+  },
+  "RB|rookie|<=25": {
+   "walk": {
+    "n": 22,
+    "retention": 0.693,
+    "moved": 0.5,
+    "washout": 0.0
+   },
+   "other": {
+    "n": 113,
+    "retention": 0.817,
+    "moved": 0.08,
+    "washout": 0.106
+   },
+   "effect": 0.848
+  },
+  "RB|rookie|26-28": {},
+  "RB|rookie|29+": {},
+  "RB|veteran": {
+   "walk": {
+    "n": 62,
+    "retention": 0.522,
+    "moved": 0.452,
+    "washout": 0.306
+   },
+   "other": {
+    "n": 53,
+    "retention": 0.775,
+    "moved": 0.283,
+    "washout": 0.113
+   },
+   "effect": 0.674
+  },
+  "RB|veteran|<=25": {
+   "walk": {
+    "n": 16,
+    "retention": 0.538,
+    "moved": 0.312,
+    "washout": 0.312
+   },
+   "other": {
+    "n": 14,
+    "retention": 0.748,
+    "moved": 0.286,
+    "washout": 0.071
+   },
+   "effect": 0.719
+  },
+  "RB|veteran|26-28": {
+   "walk": {
+    "n": 29,
+    "retention": 0.468,
+    "moved": 0.448,
+    "washout": 0.345
+   },
+   "other": {
+    "n": 33,
+    "retention": 0.805,
+    "moved": 0.242,
+    "washout": 0.152
+   },
+   "effect": 0.581
+  },
+  "RB|veteran|29+": {
+   "walk": {
+    "n": 17,
+    "retention": 0.599,
+    "moved": 0.588,
+    "washout": 0.235
+   },
+   "other": {
+    "n": 6,
+    "retention": 0.671,
+    "moved": 0.5,
+    "washout": 0.0
+   },
+   "effect": 0.893
+  },
+  "WR": {
+   "walk": {
+    "n": 116,
+    "retention": 0.679,
+    "moved": 0.422,
+    "washout": 0.198
+   },
+   "other": {
+    "n": 260,
+    "retention": 0.824,
+    "moved": 0.127,
+    "washout": 0.115
+   },
+   "effect": 0.824
+  },
+  "WR|rookie": {
+   "walk": {
+    "n": 26,
+    "retention": 0.801,
+    "moved": 0.346,
+    "washout": 0.115
+   },
+   "other": {
+    "n": 141,
+    "retention": 0.905,
+    "moved": 0.071,
+    "washout": 0.085
+   },
+   "effect": 0.885
+  },
+  "WR|rookie|<=25": {
+   "walk": {
+    "n": 26,
+    "retention": 0.801,
+    "moved": 0.346,
+    "washout": 0.115
+   },
+   "other": {
+    "n": 141,
+    "retention": 0.905,
+    "moved": 0.071,
+    "washout": 0.085
+   },
+   "effect": 0.885
+  },
+  "WR|rookie|26-28": {},
+  "WR|rookie|29+": {},
+  "WR|veteran": {
+   "walk": {
+    "n": 90,
+    "retention": 0.643,
+    "moved": 0.444,
+    "washout": 0.222
+   },
+   "other": {
+    "n": 119,
+    "retention": 0.728,
+    "moved": 0.193,
+    "washout": 0.151
+   },
+   "effect": 0.883
+  },
+  "WR|veteran|<=25": {
+   "walk": {
+    "n": 26,
+    "retention": 0.679,
+    "moved": 0.385,
+    "washout": 0.115
+   },
+   "other": {
+    "n": 12,
+    "retention": 0.864,
+    "moved": 0.083,
+    "washout": 0.083
+   },
+   "effect": 0.786
+  },
+  "WR|veteran|26-28": {
+   "walk": {
+    "n": 32,
+    "retention": 0.71,
+    "moved": 0.562,
+    "washout": 0.156
+   },
+   "other": {
+    "n": 72,
+    "retention": 0.775,
+    "moved": 0.153,
+    "washout": 0.125
+   },
+   "effect": 0.916
+  },
+  "WR|veteran|29+": {
+   "walk": {
+    "n": 32,
+    "retention": 0.548,
+    "moved": 0.375,
+    "washout": 0.375
+   },
+   "other": {
+    "n": 35,
+    "retention": 0.584,
+    "moved": 0.314,
+    "washout": 0.229
+   },
+   "effect": 0.938
+  },
+  "TE": {
+   "walk": {
+    "n": 36,
+    "retention": 0.61,
+    "moved": 0.472,
+    "washout": 0.25
+   },
+   "other": {
+    "n": 76,
+    "retention": 0.856,
+    "moved": 0.066,
+    "washout": 0.053
+   },
+   "effect": 0.713
+  },
+  "TE|rookie": {
+   "walk": {
+    "n": 11,
+    "retention": 0.729,
+    "moved": 0.455,
+    "washout": 0.0
+   },
+   "other": {
+    "n": 37,
+    "retention": 0.953,
+    "moved": 0.054,
+    "washout": 0.054
+   },
+   "effect": 0.765
+  },
+  "TE|rookie|<=25": {
+   "walk": {
+    "n": 11,
+    "retention": 0.729,
+    "moved": 0.455,
+    "washout": 0.0
+   },
+   "other": {
+    "n": 37,
+    "retention": 0.953,
+    "moved": 0.054,
+    "washout": 0.054
+   },
+   "effect": 0.765
+  },
+  "TE|rookie|26-28": {},
+  "TE|rookie|29+": {},
+  "TE|veteran": {
+   "walk": {
+    "n": 25,
+    "retention": 0.558,
+    "moved": 0.48,
+    "washout": 0.36
+   },
+   "other": {
+    "n": 39,
+    "retention": 0.763,
+    "moved": 0.077,
+    "washout": 0.051
+   },
+   "effect": 0.731
+  },
+  "TE|veteran|<=25": {
+   "walk": {
+    "n": 4,
+    "retention": 0.536,
+    "moved": 0.5,
+    "washout": 0.25
+   },
+   "other": {
+    "n": 4,
+    "retention": 0.859,
+    "moved": 0.0,
+    "washout": 0.0
+   },
+   "effect": 0.624
+  },
+  "TE|veteran|26-28": {
+   "walk": {
+    "n": 11,
+    "retention": 0.602,
+    "moved": 0.455,
+    "washout": 0.364
+   },
+   "other": {
+    "n": 26,
+    "retention": 0.741,
+    "moved": 0.038,
+    "washout": 0.038
+   },
+   "effect": 0.812
+  },
+  "TE|veteran|29+": {
+   "walk": {
+    "n": 10,
+    "retention": 0.519,
+    "moved": 0.5,
+    "washout": 0.4
+   },
+   "other": {
+    "n": 9,
+    "retention": 0.784,
+    "moved": 0.222,
+    "washout": 0.111
+   },
+   "effect": 0.662
+  }
+ }
+}

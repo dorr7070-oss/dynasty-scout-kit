@@ -1,0 +1,666 @@
+{
+ "window": "2015-2025 regular seasons",
+ "player_games": 33244,
+ "shrink_k": 300,
+ "effects": {
+  "QB": {
+   "n": 5418,
+   "implied": {
+    "higher": {
+     "n": 1274,
+     "effect": 1.04
+    },
+    "lower": {
+     "n": 1066,
+     "effect": 0.95
+    },
+    "much higher": {
+     "n": 341,
+     "effect": 1.044
+    },
+    "much lower": {
+     "n": 244,
+     "effect": 0.909
+    },
+    "usual": {
+     "n": 2372,
+     "effect": 1.004
+    }
+   },
+   "matchup": {
+    "average": {
+     "n": 683,
+     "effect": 1.003
+    },
+    "below avg": {
+     "n": 614,
+     "effect": 1.009
+    },
+    "soft": {
+     "n": 625,
+     "effect": 1.009
+    },
+    "tough": {
+     "n": 1079,
+     "effect": 0.921
+    },
+    "very soft": {
+     "n": 1332,
+     "effect": 1.045
+    }
+   },
+   "wind": {
+    "10-15 mph": {
+     "n": 1072,
+     "effect": 0.967
+    },
+    "15-20 mph": {
+     "n": 329,
+     "effect": 0.929
+    },
+    "20+ mph": {
+     "n": 65,
+     "effect": 0.757
+    },
+    "calm <10": {
+     "n": 2416,
+     "effect": 1.013
+    },
+    "indoor": {
+     "n": 1536,
+     "effect": 1.028
+    }
+   },
+   "temp": {
+    "25-40F": {
+     "n": 498,
+     "effect": 0.996
+    },
+    "40-80F": {
+     "n": 2862,
+     "effect": 0.988
+    },
+    "80F+": {
+     "n": 436,
+     "effect": 1.021
+    },
+    "<25F": {
+     "n": 86,
+     "effect": 0.811
+    },
+    "indoor": {
+     "n": 1536,
+     "effect": 1.028
+    }
+   },
+   "precip": {
+    "dry": {
+     "n": 3365,
+     "effect": 1.003
+    },
+    "heavy rain": {
+     "n": 110,
+     "effect": 0.811
+    },
+    "indoor": {
+     "n": 1536,
+     "effect": 1.028
+    },
+    "rain": {
+     "n": 366,
+     "effect": 0.918
+    },
+    "snow": {
+     "n": 41,
+     "effect": 0.953
+    }
+   },
+   "rest": {
+    "extra (9-12)": {
+     "n": 370,
+     "effect": 1.021
+    },
+    "normal": {
+     "n": 4366,
+     "effect": 0.996
+    },
+    "off bye (13+)": {
+     "n": 337,
+     "effect": 0.996
+    },
+    "short (<=5)": {
+     "n": 345,
+     "effect": 1.032
+    }
+   },
+   "travel": {
+    "1 zone": {
+     "n": 878,
+     "effect": 0.945
+    },
+    "2-3 zones": {
+     "n": 568,
+     "effect": 0.983
+    },
+    "home": {
+     "n": 2613,
+     "effect": 1.04
+    },
+    "international": {
+     "n": 65,
+     "effect": 0.899
+    },
+    "same zone": {
+     "n": 1159,
+     "effect": 0.963
+    },
+    "west team, 1 PM ET": {
+     "n": 135,
+     "effect": 1.016
+    }
+   },
+   "backup_qb": {}
+  },
+  "RB": {
+   "n": 9063,
+   "implied": {
+    "higher": {
+     "n": 2030,
+     "effect": 1.049
+    },
+    "lower": {
+     "n": 1842,
+     "effect": 0.95
+    },
+    "much higher": {
+     "n": 534,
+     "effect": 1.079
+    },
+    "much lower": {
+     "n": 518,
+     "effect": 0.897
+    },
+    "usual": {
+     "n": 3946,
+     "effect": 1.0
+    }
+   },
+   "matchup": {
+    "average": {
+     "n": 1154,
+     "effect": 1.005
+    },
+    "below avg": {
+     "n": 1169,
+     "effect": 0.99
+    },
+    "soft": {
+     "n": 880,
+     "effect": 1.035
+    },
+    "tough": {
+     "n": 2502,
+     "effect": 0.984
+    },
+    "very soft": {
+     "n": 1610,
+     "effect": 1.074
+    }
+   },
+   "wind": {
+    "10-15 mph": {
+     "n": 1816,
+     "effect": 1.004
+    },
+    "15-20 mph": {
+     "n": 574,
+     "effect": 1.006
+    },
+    "20+ mph": {
+     "n": 109,
+     "effect": 0.986
+    },
+    "calm <10": {
+     "n": 4033,
+     "effect": 0.997
+    },
+    "indoor": {
+     "n": 2531,
+     "effect": 1.002
+    }
+   },
+   "temp": {
+    "25-40F": {
+     "n": 841,
+     "effect": 1.042
+    },
+    "40-80F": {
+     "n": 4799,
+     "effect": 0.999
+    },
+    "80F+": {
+     "n": 730,
+     "effect": 0.955
+    },
+    "<25F": {
+     "n": 162,
+     "effect": 0.978
+    },
+    "indoor": {
+     "n": 2531,
+     "effect": 1.002
+    }
+   },
+   "precip": {
+    "dry": {
+     "n": 5644,
+     "effect": 1.0
+    },
+    "heavy rain": {
+     "n": 187,
+     "effect": 0.94
+    },
+    "indoor": {
+     "n": 2531,
+     "effect": 1.002
+    },
+    "rain": {
+     "n": 634,
+     "effect": 0.996
+    },
+    "snow": {
+     "n": 67,
+     "effect": 1.128
+    }
+   },
+   "rest": {
+    "extra (9-12)": {
+     "n": 613,
+     "effect": 1.018
+    },
+    "normal": {
+     "n": 7301,
+     "effect": 0.998
+    },
+    "off bye (13+)": {
+     "n": 580,
+     "effect": 1.016
+    },
+    "short (<=5)": {
+     "n": 569,
+     "effect": 0.987
+    }
+   },
+   "travel": {
+    "1 zone": {
+     "n": 1464,
+     "effect": 0.945
+    },
+    "2-3 zones": {
+     "n": 942,
+     "effect": 0.968
+    },
+    "home": {
+     "n": 4393,
+     "effect": 1.029
+    },
+    "international": {
+     "n": 108,
+     "effect": 1.011
+    },
+    "same zone": {
+     "n": 1947,
+     "effect": 0.995
+    },
+    "west team, 1 PM ET": {
+     "n": 209,
+     "effect": 0.957
+    }
+   },
+   "backup_qb": {
+    "backup": {
+     "n": 1507,
+     "effect": 0.981
+    },
+    "starter": {
+     "n": 7556,
+     "effect": 1.004
+    }
+   }
+  },
+  "WR": {
+   "n": 13916,
+   "implied": {
+    "higher": {
+     "n": 3145,
+     "effect": 1.028
+    },
+    "lower": {
+     "n": 2766,
+     "effect": 0.982
+    },
+    "much higher": {
+     "n": 856,
+     "effect": 1.018
+    },
+    "much lower": {
+     "n": 786,
+     "effect": 0.9
+    },
+    "usual": {
+     "n": 6039,
+     "effect": 1.005
+    }
+   },
+   "matchup": {
+    "average": {
+     "n": 2219,
+     "effect": 0.996
+    },
+    "below avg": {
+     "n": 2200,
+     "effect": 1.008
+    },
+    "soft": {
+     "n": 1825,
+     "effect": 1.016
+    },
+    "tough": {
+     "n": 2592,
+     "effect": 0.957
+    },
+    "very soft": {
+     "n": 2447,
+     "effect": 1.008
+    }
+   },
+   "wind": {
+    "10-15 mph": {
+     "n": 2741,
+     "effect": 0.952
+    },
+    "15-20 mph": {
+     "n": 830,
+     "effect": 0.913
+    },
+    "20+ mph": {
+     "n": 148,
+     "effect": 0.84
+    },
+    "calm <10": {
+     "n": 6223,
+     "effect": 1.013
+    },
+    "indoor": {
+     "n": 3974,
+     "effect": 1.036
+    }
+   },
+   "temp": {
+    "25-40F": {
+     "n": 1237,
+     "effect": 1.007
+    },
+    "40-80F": {
+     "n": 7347,
+     "effect": 0.984
+    },
+    "80F+": {
+     "n": 1135,
+     "effect": 1.002
+    },
+    "<25F": {
+     "n": 223,
+     "effect": 0.851
+    },
+    "indoor": {
+     "n": 3974,
+     "effect": 1.036
+    }
+   },
+   "precip": {
+    "dry": {
+     "n": 8630,
+     "effect": 0.998
+    },
+    "heavy rain": {
+     "n": 269,
+     "effect": 0.822
+    },
+    "indoor": {
+     "n": 3974,
+     "effect": 1.036
+    },
+    "rain": {
+     "n": 940,
+     "effect": 0.928
+    },
+    "snow": {
+     "n": 103,
+     "effect": 0.89
+    }
+   },
+   "rest": {
+    "extra (9-12)": {
+     "n": 969,
+     "effect": 0.962
+    },
+    "normal": {
+     "n": 11183,
+     "effect": 1.004
+    },
+    "off bye (13+)": {
+     "n": 883,
+     "effect": 0.943
+    },
+    "short (<=5)": {
+     "n": 881,
+     "effect": 1.044
+    }
+   },
+   "travel": {
+    "1 zone": {
+     "n": 2261,
+     "effect": 0.972
+    },
+    "2-3 zones": {
+     "n": 1509,
+     "effect": 1.0
+    },
+    "home": {
+     "n": 6705,
+     "effect": 1.02
+    },
+    "international": {
+     "n": 154,
+     "effect": 0.954
+    },
+    "same zone": {
+     "n": 2926,
+     "effect": 0.97
+    },
+    "west team, 1 PM ET": {
+     "n": 361,
+     "effect": 1.061
+    }
+   },
+   "backup_qb": {
+    "backup": {
+     "n": 2346,
+     "effect": 0.946
+    },
+    "starter": {
+     "n": 11570,
+     "effect": 1.011
+    }
+   }
+  },
+  "TE": {
+   "n": 4847,
+   "implied": {
+    "higher": {
+     "n": 1111,
+     "effect": 1.058
+    },
+    "lower": {
+     "n": 983,
+     "effect": 0.923
+    },
+    "much higher": {
+     "n": 294,
+     "effect": 1.085
+    },
+    "much lower": {
+     "n": 269,
+     "effect": 0.861
+    },
+    "usual": {
+     "n": 2082,
+     "effect": 1.011
+    }
+   },
+   "matchup": {
+    "average": {
+     "n": 423,
+     "effect": 1.025
+    },
+    "below avg": {
+     "n": 375,
+     "effect": 1.062
+    },
+    "soft": {
+     "n": 370,
+     "effect": 0.991
+    },
+    "tough": {
+     "n": 1585,
+     "effect": 0.977
+    },
+    "very soft": {
+     "n": 904,
+     "effect": 1.089
+    }
+   },
+   "wind": {
+    "10-15 mph": {
+     "n": 914,
+     "effect": 0.962
+    },
+    "15-20 mph": {
+     "n": 283,
+     "effect": 0.942
+    },
+    "20+ mph": {
+     "n": 63,
+     "effect": 0.85
+    },
+    "calm <10": {
+     "n": 2195,
+     "effect": 1.029
+    },
+    "indoor": {
+     "n": 1392,
+     "effect": 0.997
+    }
+   },
+   "temp": {
+    "25-40F": {
+     "n": 459,
+     "effect": 0.967
+    },
+    "40-80F": {
+     "n": 2538,
+     "effect": 1.014
+    },
+    "80F+": {
+     "n": 375,
+     "effect": 0.966
+    },
+    "<25F": {
+     "n": 83,
+     "effect": 0.962
+    },
+    "indoor": {
+     "n": 1392,
+     "effect": 0.997
+    }
+   },
+   "precip": {
+    "dry": {
+     "n": 3006,
+     "effect": 1.013
+    },
+    "heavy rain": {
+     "n": 94,
+     "effect": 0.879
+    },
+    "indoor": {
+     "n": 1392,
+     "effect": 0.997
+    },
+    "rain": {
+     "n": 314,
+     "effect": 0.923
+    },
+    "snow": {
+     "n": 41,
+     "effect": 0.965
+    }
+   },
+   "rest": {
+    "extra (9-12)": {
+     "n": 352,
+     "effect": 1.052
+    },
+    "normal": {
+     "n": 3881,
+     "effect": 0.995
+    },
+    "off bye (13+)": {
+     "n": 305,
+     "effect": 0.94
+    },
+    "short (<=5)": {
+     "n": 309,
+     "effect": 1.058
+    }
+   },
+   "travel": {
+    "1 zone": {
+     "n": 798,
+     "effect": 0.993
+    },
+    "2-3 zones": {
+     "n": 497,
+     "effect": 0.962
+    },
+    "home": {
+     "n": 2341,
+     "effect": 1.008
+    },
+    "international": {
+     "n": 53,
+     "effect": 1.165
+    },
+    "same zone": {
+     "n": 1044,
+     "effect": 1.007
+    },
+    "west team, 1 PM ET": {
+     "n": 114,
+     "effect": 0.899
+    }
+   },
+   "backup_qb": {
+    "backup": {
+     "n": 828,
+     "effect": 0.939
+    },
+    "starter": {
+     "n": 4019,
+     "effect": 1.012
+    }
+   }
+  }
+ }
+}

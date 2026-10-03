@@ -1,0 +1,88 @@
+{
+ "season": 2025,
+ "weeks": "4-17",
+ "variants": {
+  "sleeper": {
+   "mae": 5.675,
+   "n": 2596,
+   "by_pos": {
+    "QB": 6.975,
+    "RB": 5.698,
+    "WR": 5.424,
+    "TE": 4.993
+   }
+  },
+  "form": {
+   "mae": 5.662,
+   "n": 2596,
+   "by_pos": {
+    "QB": 6.567,
+    "RB": 5.756,
+    "WR": 5.492,
+    "TE": 5.042
+   }
+  },
+  "sleeper+extremes": {
+   "mae": 5.643,
+   "n": 2596,
+   "by_pos": {
+    "QB": 6.928,
+    "RB": 5.689,
+    "WR": 5.381,
+    "TE": 4.963
+   }
+  },
+  "form+extremes": {
+   "mae": 5.64,
+   "n": 2596,
+   "by_pos": {
+    "QB": 6.553,
+    "RB": 5.748,
+    "WR": 5.463,
+    "TE": 5.009
+   }
+  },
+  "sleeper+conditions": {
+   "mae": 5.726,
+   "n": 2596,
+   "by_pos": {
+    "QB": 7.15,
+    "RB": 5.702,
+    "WR": 5.471,
+    "TE": 5.011
+   }
+  },
+  "sleeper+all": {
+   "mae": 5.734,
+   "n": 2596,
+   "by_pos": {
+    "QB": 7.136,
+    "RB": 5.745,
+    "WR": 5.462,
+    "TE": 5.017
+   }
+  },
+  "form+conditions": {
+   "mae": 5.701,
+   "n": 2596,
+   "by_pos": {
+    "QB": 6.636,
+    "RB": 5.747,
+    "WR": 5.565,
+    "TE": 5.055
+   }
+  },
+  "form+all": {
+   "mae": 5.699,
+   "n": 2596,
+   "by_pos": {
+    "QB": 6.583,
+    "RB": 5.78,
+    "WR": 5.555,
+    "TE": 5.06
+   }
+  }
+ },
+ "chosen": "form+extremes",
+ "note": "mean absolute error in PPR points per player-week; players Sleeper projected 5+ who played"
+}
