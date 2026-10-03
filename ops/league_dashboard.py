@@ -532,8 +532,8 @@ def build():
     if tf and tf.get('best_by_partner'):
         O.append('<section><div class="kicker">Edge finder</div><h2 class="disp">Trade Finder</h2>'
                  f'<p class="lede">The best offer to each owner, tested on both schedules: expected wins it adds for you over the rest '
-                 f'of the season (now {tf["base_wins"]:.1f}), and the reason the other owner says yes. Untouchables and kept picks are '
-                 'never offered.</p><div class="card">')
+                 f'of the season (now {tf["base_wins"]:.1f}), and the reason the other owner says yes. Core players are left out here; '
+                 'they only move for a king\'s ransom (below).</p><div class="card">')
         for o in tf['best_by_partner'][:8]:
             O.append(f'<div class="crow"><span class="nm"><b>{esc(o["get_label"])}</b> <small>{esc(o["get_pos"])} from @{esc(o["partner"])} '
                      f'({o["playoff"]:.0%} playoffs)</small></span>'
@@ -541,6 +541,18 @@ def build():
                      f'<span class="v num">+{o["my_wins"]:.2f}</span>'
                      f'<span class="sig">Give {esc(" + ".join(o["give_labels"]))} · your value {o["my_value"]:+,} · theirs {o["their_value"]:+,}'
                      f'{" · they must drop one" if o["they_must_drop"] else ""}</span></div>')
+        rs = tf.get('ransom') or []
+        if rs:
+            O.append('<div class="card"><h3>King\'s ransom: what the core would cost</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
+                     'Rule: the evaluation must favor you by +9,000 or more on market value. The cheapest qualifying package per team, '
+                     'the two likeliest shown.</div>')
+            for a in dict.fromkeys(x['asset'] for x in rs):
+                rr = [x for x in rs if x['asset'] == a][:2]
+                for x in rr:
+                    O.append(f'<div class="prow"><span class="pos"></span><span><b>{esc(x["asset_label"])}</b> ← @{esc(x["partner"])}: '
+                             f'{esc(" + ".join(x["get_labels"]))} <small style="color:var(--muted)">value back {x["value_back"]:,} · '
+                             f'your wins {x["my_wins"]:+.2f}</small></span><span class="age"></span><span class="vv num">{x["their_overpay"]:+,}</span></div>')
+            O.append('</div>')
         O.append('</div></section>')
     if wv or io or vt:
         O.append('<section><div class="kicker">Edge finder</div><h2 class="disp">Waivers, Injuries &amp; Market Movers</h2><div class="cols">')

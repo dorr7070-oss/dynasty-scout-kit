@@ -10,7 +10,7 @@ Owner's choice (2026-10-02). Every free agent at QB/RB/WR/TE scored three ways:
 Bid guide from THIS league's FAAB history (every winning bid over $0 on record): a would-start add
 -> the league's 75th-percentile winning bid, a stash -> the median, depth -> $0-1, all capped by
 your remaining budget and the share of the season left. Names the drop that costs least
-(lowest value + projection on your active roster, never a starter or anyone in config "untouchable").
+(lowest value + projection on your active roster, never a starter or a config "premium"/"untouchable" asset).
 """
 import json, os, statistics, sys, time
 
@@ -29,7 +29,7 @@ def main():
     L = json.load(open(os.path.join(DATA, season, 'league.json')))
     cfg = json.load(open(os.path.join(ROOT, 'config.json')))
     me = cfg.get('my_username')
-    fence = set(cfg.get('untouchable') or [])
+    fence = set(cfg.get('untouchable') or []) | set((cfg.get('premium') or {}).keys())   # never suggested as a drop
     rostered = {pid for r in R for pid in (r.get('players') or [])}
     my = next(r for r in R if U.get(r.get('owner_id')) == me)
     cons = json.load(open(os.path.join(DATA, 'values', 'consensus.json')))

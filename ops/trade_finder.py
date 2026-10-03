@@ -16,7 +16,10 @@ reason to accept.
                    value back within 10%
                  rebuilder (<= 25%): gets market value back (>= 0); wins don't matter to them
                  middle: both, a little stricter on wins
-Never offers anything in config "untouchable" or "keep" (player ids, or "pick:<season>:<round>:<orig roster>").
+Config "premium" {asset: multiplier} marks core assets (player ids or "pick:<season>:<round>:<orig roster>"):
+they are left out of ordinary offers and priced separately as KING'S-RANSOM asks — the cheapest package of up
+to 3 of each team's assets worth >= multiplier x his value (owner's rule 2026-10-02: no one is untouchable, the core
+just costs a king's ransom). Config "untouchable" is still honoured as a hard no if anyone sets it.
 A 2-for-1 that would overfill their active roster is flagged ("they must drop one").
 """
 import json, math, os, sys, time
@@ -47,7 +50,11 @@ def main():
     adj = lambda pid: cons.get(pid, {}).get('mean', 0)
     mkt = lambda pid: cons.get(pid, {}).get('mean_market', cons.get(pid, {}).get('mean', 0))
     cfg = json.load(open(os.path.join(ROOT, 'config.json')))
-    me, fence = cfg.get('my_username'), set(cfg.get('untouchable') or []) | set(cfg.get('keep') or [])
+    me = cfg.get('my_username')
+    fence = set(cfg.get('untouchable') or [])          # hard no (legacy / optional)
+    # king's-ransom rules: a number = multiplier on our value; {"surplus": N} = the evaluation must favor you
+    # by at least N on MARKET value (what a KTC-style calculator shows), e.g. +9,000
+    premium = {str(k): v for k, v in (cfg.get('premium') or {}).items()}
     rosters, names = PK.rosters, {r['roster_id']: PK.rid2user.get(r['roster_id']) for r in PK.rosters}
     my_rid = next(rid for rid, n in names.items() if n == me)
     po = json.load(open(os.path.join(DATA, 'pick_odds.json'))) if os.path.exists(os.path.join(DATA, 'pick_odds.json')) else {}
@@ -67,7 +74,7 @@ def main():
 
     # my give assets: players + owned future picks, minus the fence
     mine = [p for p in active(roster[my_rid]) if pos_of(p) in LF.POS and p not in fence and adj(p) >= GIVE_MIN]
-    mine = sorted(mine, key=lambda p: -adj(p))[:MAX_GIVE]
+    mine = sorted(mine, key=lambda p: -adj(p))[:MAX_GIVE + len(premium)]
     my_picks = []
     for season, rnd, orig in PK.owned_future_picks().get(my_rid, []):
         key = f'pick:{season}:{rnd}:{orig}'
@@ -78,7 +85,8 @@ def main():
             my_picks.append({'key': key, 'label': f'{season} {tier} {PK._RN.get(rnd, rnd)} ({names.get(orig)})', 'value': v})
     pick_val = {p['key']: p['value'] for p in my_picks}
     label = lambda a: (next(x['label'] for x in my_picks if x['key'] == a) if a.startswith('pick:') else P[a].get('full_name'))
-    give_assets = mine + [p['key'] for p in my_picks]
+    give_all = mine + [p['key'] for p in my_picks]
+    give_assets = [a for a in give_all if a not in premium]     # premium assets only go in king's-ransom asks
     gval = lambda a: pick_val[a] if a.startswith('pick:') else adj(a)
     gmkt = lambda a: pick_val[a] if a.startswith('pick:') else mkt(a)
     gives = [(a,) for a in give_assets] + list(combinations(give_assets, 2))
@@ -132,8 +140,52 @@ def main():
             best_by_partner[o['partner']] = o
             seen_get.add(o['get'])
     top = sorted(best_by_partner.values(), key=lambda o: -o['score'])
+    # ---- king's-ransom asks: what each premium asset would cost each team ----
+    # A package qualifies when the value coming back (our contract-adjusted view; picks at pick_value)
+    # is at least premium x the asset's value. Among qualifying 1-3 asset packages from each team
+    # (their top players + their future picks), keep the one they overpay least by on the market —
+    # the ask most likely to be heard — and replay your season with it.
+    owned = PK.owned_future_picks()
+    ransom = []
+    for a in [x for x in give_all if x in premium]:
+        rule = premium[a]
+        surplus = rule.get('surplus') if isinstance(rule, dict) else None
+        need = (gmkt(a) + surplus) if surplus is not None else float(rule) * gval(a)
+        side = 2 if surplus is not None else 1          # compare on market (index 2) or our value (index 1)
+        for rid, r in roster.items():
+            if rid == my_rid:
+                continue
+            assets = [(p, adj(p), mkt(p), P[p].get('full_name')) for p in sorted(
+                [p for p in active(r) if pos_of(p) in LF.POS and adj(p) >= GET_MIN], key=lambda p: -adj(p))[:8]]
+            for season, rnd, orig in owned.get(rid, []):
+                v, tier = PK.pick_value(season, rnd, orig)
+                if v >= 500:
+                    assets.append((f'pick:{season}:{rnd}:{orig}', v, v, f'{season} {tier} {PK._RN.get(rnd, rnd)} ({names.get(orig)})'))
+            best = None
+            for k in (1, 2, 3, 4):
+                for combo in combinations(assets, k):
+                    got = sum(x[side] for x in combo)
+                    if got < need:
+                        continue
+                    over = sum(x[2] for x in combo) - gmkt(a)
+                    if best is None or over < best[0]:
+                        best = (over, combo, got)
+            if not best:
+                continue
+            over, combo, got = best
+            gp = [x[0] for x in combo if not x[0].startswith('pick:')]
+            my_after = [p for p in my_act if p != a] + gp
+            dw = exp_wins(my_rid, my_after) - base[my_rid]
+            their_after = [p for p in active(r) if pos_of(p) in LF.POS and p not in gp] + ([a] if not a.startswith('pick:') else [])
+            tdw = exp_wins(rid, their_after) - base[rid]
+            ransom.append({'asset': a, 'asset_label': label(a), 'rule': (f'+{surplus:,.0f} in your favor' if surplus is not None
+                                                                     else f'x{float(rule)}'), 'need': round(need), 'partner': names[rid],
+                           'playoff': round(playoff.get(rid, 0.5), 3), 'get_labels': [x[3] for x in combo],
+                           'value_back': round(got), 'value_given': round(gmkt(a) if surplus is not None else gval(a)), 'their_overpay': round(over),
+                           'my_wins': round(dw, 2), 'their_wins': round(tdw, 2)})
+    ransom.sort(key=lambda x: (x['asset_label'], x['their_overpay']))
     json.dump({'generated': time.strftime('%Y-%m-%d %H:%M'), 'from_week': wk_now, 'base_wins': round(base[my_rid], 2),
-               'n_evaluated': len(offers), 'best_by_partner': top, 'top': offers[:25]},
+               'n_evaluated': len(offers), 'best_by_partner': top, 'top': offers[:25], 'ransom': ransom},
               open(os.path.join(DATA, 'trade_finder.json'), 'w'), indent=1)
 
     why = {'contender': 'they keep their points while contending, and the value is close',
@@ -141,7 +193,7 @@ def main():
     M = [f'# Trade Finder — from week {wk_now}', '',
          f'_Expected wins rest of season now: {base[my_rid]:.2f}. Every 1-for-1 and 2-for-1 with each owner tested on both '
          f'schedules ({len(offers):,} passed the filters). Values: yours = contract-adjusted consensus, theirs = market. '
-         f'Untouchable: {", ".join(label(a) if not a.startswith("pick:") else a for a in fence) or "none"}._', '',
+         f'Core assets are never in these: they only move for a king\'s ransom (below)._', '',
          '## Best offer to each owner', '',
          '| Owner | You give | You get | +Wins you | Your value | Their value | Their wins | Why they say yes |',
          '|---|---|---|---|---|---|---|---|']
@@ -151,6 +203,17 @@ def main():
                  f"{why[o['window']]}{' · they must drop one' if o['they_must_drop'] else ''} |")
     if not top:
         M.append('| — | no offer passes both sides right now | | | | | | |')
+    M += ['', "## King's ransom — what each core asset would cost", '',
+          '_No one is untouchable; the core just needs a king\'s ransom (config `premium`): for the core, the trade evaluation must '
+          'favor you by +9,000 or more on market value. Per team, the cheapest qualifying package of up to 4 of their assets — the ask they are most likely '
+          'to hear. "Their overpay" is how far above market they would have to go; the smaller, the likelier._', '']
+    for a in dict.fromkeys(x['asset'] for x in ransom):
+        rows_ = [x for x in ransom if x['asset'] == a][:4]
+        M += [f"**{rows_[0]['asset_label']}** (value {rows_[0]['value_given']:,}; rule {rows_[0]['rule']} = needs {rows_[0]['need']:,} back)", '',
+              '| From | Package | Value back | Their overpay | Your wins | Their wins |', '|---|---|---|---|---|---|']
+        M += [f"| {x['partner']} ({x['playoff']:.0%}) | {' + '.join(x['get_labels'])} | {x['value_back']:,} | {x['their_overpay']:+,} | "
+              f"{x['my_wins']:+.2f} | {x['their_wins']:+.2f} |" for x in rows_]
+        M.append('')
     open(os.path.join(ROOT, 'TRADE_FINDER.md'), 'w').write('\n'.join(M) + '\n')
     print(f'trade finder -> TRADE_FINDER.md: {len(offers):,} viable offers across {len(top)} owners'
           + (f"; best: {' + '.join(top[0]['give_labels'])} for {top[0]['get_label']} ({top[0]['partner']}), "
