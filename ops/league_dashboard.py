@@ -440,6 +440,11 @@ def build():
     O.append('<div class="todo"><div class="kicker" style="margin-top:14px">On the clock</div><ul>' +
              ''.join(f'<li>{esc(x)}</li>' for x in items) + '</ul></div>')
     O.append(f'<p class="sub" style="font-size:12px;color:var(--muted)">Updated {datetime.now().strftime("%a %b %-d, %-I:%M %p")} Arizona time from live Sleeper data · refreshes automatically 4x a day and on every update</p>')
+    _links = CFG.get('dashboard_links') or {}
+    if _links:
+        O.append('<nav style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' + ''.join(
+            f'<a href="{esc(u)}" style="font-size:13px;font-weight:600;color:var(--accent-ink);text-decoration:none;border:1px solid var(--line);'
+            f'border-radius:999px;padding:4px 12px;background:var(--card)">{esc(n)}</a>' for n, u in _links.items() if n != 'Command Center') + '</nav>')
     O.append('</header>')
 
     # ---- this week: start/sit (ops/weekly.py) ----
