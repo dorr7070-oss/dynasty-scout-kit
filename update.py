@@ -21,7 +21,7 @@ def ensure_config(root):
 
 STEPS = [  # (script, optional)
     ('league_profile.py', False), ('fetch.py', False), ('values.py', False), ('usage.py', False), ('usage_adv.py', True), ('context.py', False), ('contract_study.py', True), ('contracts.py', True), ('value_trends.py', True),
-    ('project.py', False), ('injury_study.py', True), ('injuries.py', True), ('weekly_study.py', True), ('weekly.py', True), ('waivers.py', True), ('lottery.py', False), ('lottery_tracker.py', True), ('trade_finder.py', True), ('prospects.py', True), ('cfbd.py', True),
+    ('project.py', False), ('injury_study.py', True), ('injuries.py', True), ('weekly_study.py', True), ('weekly.py', True), ('waivers.py', True), ('lottery.py', False), ('lottery_tracker.py', True), ('trade_finder.py', True), ('our_projections.py', True), ('prospects.py', True), ('cfbd.py', True),
     ('profiles.py', False), ('report.py', False), ('advise.py', False), ('draft.py', False),
     ('trade_grades.py', False), ('manager_skill.py', False),
     ('league_dashboard.py', False), ('assets_dashboard.py', False),

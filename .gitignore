@@ -6,6 +6,7 @@ data/*
 !data/weekly_model.json
 !data/age_curve.json
 !data/injury_effects.json
+!data/our_model.json
 dashboards/
 profiles/
 LEAGUE.md
@@ -18,6 +19,7 @@ VALUE_TRENDS.md
 INJURIES.md
 WAIVERS.md
 TRADE_FINDER.md
+OUR_PROJECTIONS.md
 REPORT.md
 research/PROSPECTS.md
 __pycache__/

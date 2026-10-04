@@ -439,7 +439,7 @@ def build():
     items = [x.strip() for x in OPEN_DECISIONS.split(' · ') if x.strip()]
     O.append('<div class="todo"><div class="kicker" style="margin-top:14px">On the clock</div><ul>' +
              ''.join(f'<li>{esc(x)}</li>' for x in items) + '</ul></div>')
-    O.append(f'<p class="sub" style="font-size:12px;color:var(--muted)">Updated {date.today().isoformat()} from live Sleeper data</p>')
+    O.append(f'<p class="sub" style="font-size:12px;color:var(--muted)">Updated {datetime.now().strftime("%a %b %-d, %-I:%M %p")} Arizona time from live Sleeper data · refreshes automatically 4x a day and on every update</p>')
     O.append('</header>')
 
     # ---- this week: start/sit (ops/weekly.py) ----
@@ -497,6 +497,55 @@ def build():
             if i == PLAYOFF_SPOTS - 1:
                 O.append('<div class="cut">playoff line</div>')
         O.append('</div></section>')
+
+    # ---- our projections (ops/our_projections.py) — independent of Sleeper ----
+    _op = os.path.join(ROOT, 'data', 'our_projection.json')
+    if os.path.exists(_op):
+        opj = json.load(open(_op))
+        mdl, tms = opj.get('model') or {}, opj.get('teams') or {}
+        order_ = sorted(tms, key=lambda k: tms[k]['exp_place'])
+        O.append('<section><div class="kicker">Our model</div><h2 class="disp">Our Projections vs Sleeper</h2>'
+                 f'<p class="lede">Built from our own data, not Sleeper\'s: recent form, targets/carries/attempts priced at measured rates, '
+                 f'last season, Vegas lines, extreme weather, backup QBs and injuries. Tested on 2025 games it had never seen: error '
+                 f'{mdl.get("ours_mae", "—")} points per player-week vs Sleeper\'s {mdl.get("sleeper_mae", "—")}. Bar = our playoff odds; '
+                 f'the tick marks Sleeper-based odds.</p><div class="card race">')
+        for k in order_:
+            t = tms[k]
+            pct, sp = t['playoff'] * 100, (t.get('sleeper_playoff') or 0) * 100
+            col = 'good' if pct >= 60 else 'warn' if pct >= 20 else 'crit'
+            you = ' you' if t['owner'] == MY else ''
+            O.append(f'<div class="rrow{you}"><span class="nm">{esc(t["owner"])} <small style="color:var(--muted)">{esc(t["record"])} · '
+                     f'{t["pts_wk"]:.0f}/wk · {t["exp_wins"]:.1f} W</small></span>'
+                     f'<span class="track" style="position:relative"><span class="fill" style="width:{max(1.5, pct):.1f}%;background:var(--{col})"></span>'
+                     f'<span style="position:absolute;top:-2px;bottom:-2px;left:{sp:.1f}%;width:2px;background:var(--ink)"></span></span>'
+                     f'<span class="v num">{pct:.0f}%</span></div>')
+        O.append('</div>')
+        _pj = os.path.join(ROOT, 'data', 'projection.json')
+        slw = json.load(open(_pj))['player_weekly'] if os.path.exists(_pj) else {}
+        wks_ = opj.get('weeks') or []
+        rng = range(wks_[0], wks_[1] + 1) if wks_ else range(0)
+        my_ids = next((r['players'] for r in rosters if r['roster_id'] == my_rid), []) or []
+        rows_ = []
+        for pid in my_ids:
+            x = (opj.get('players') or {}).get(pid)
+            if not x:
+                continue
+            ours_ = [v for w, v in x['weekly'].items() if v > 0]
+            slv = [v for w, v in (slw.get(pid) or {}).items() if int(w) in rng and v > 0]
+            if ours_ or slv:
+                rows_.append((x['name'], x['pos'], sum(ours_) / len(ours_) if ours_ else 0, sum(slv) / len(slv) if slv else 0))
+        rows_.sort(key=lambda r: -r[2])
+        if rows_:
+            O.append('<div class="card"><h3>Your players — our points per game vs Sleeper\'s</h3>'
+                     '<div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">Rest of the regular season, games played only. '
+                     'Big gaps are where our data sees something Sleeper doesn\'t (or the reverse).</div>')
+            for nm_, pos_, o_, s_ in rows_[:14]:
+                d_ = o_ - s_
+                c_ = 'var(--good)' if d_ >= 1 else 'var(--crit)' if d_ <= -1 else 'var(--ink2)'
+                O.append(f'<div class="prow"><span class="pos">{esc(pos_)}</span><span>{esc(nm_)}</span>'
+                         f'<span class="age">{s_:.1f}</span><span class="vv num" style="color:{c_}">{o_:.1f}</span></div>')
+            O.append('<div style="font-size:11px;color:var(--muted)">grey = Sleeper · right = ours</div></div>')
+        O.append('</section>')
 
     # ---- lottery tracker (ops/lottery_tracker.py) ----
     _lh = os.path.join(ROOT, 'data', 'lottery_history.json')
