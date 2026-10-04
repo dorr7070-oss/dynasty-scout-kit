@@ -24,7 +24,7 @@ STEPS = [  # (script, optional)
     ('project.py', False), ('injury_study.py', True), ('injuries.py', True), ('weekly_study.py', True), ('weekly.py', True), ('waivers.py', True), ('lottery.py', False), ('lottery_tracker.py', True), ('trade_finder.py', True), ('our_projections.py', True), ('prospects.py', True), ('cfbd.py', True),
     ('profiles.py', False), ('report.py', False), ('advise.py', False), ('draft.py', False),
     ('trade_grades.py', False), ('manager_skill.py', False),
-    ('league_dashboard.py', False), ('assets_dashboard.py', False), ('analysis_dashboard.py', True),
+    ('league_dashboard.py', False), ('assets_dashboard.py', False), ('insights.py', True), ('analysis_dashboard.py', True),
 ]
 
 

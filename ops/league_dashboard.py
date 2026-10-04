@@ -586,7 +586,7 @@ def build():
     if tf and tf.get('best_by_partner'):
         O.append('<section><div class="kicker">Edge finder</div><h2 class="disp">Trade Finder</h2>'
                  f'<p class="lede">The best offer to each owner, tested on both schedules: expected wins it adds for you over the rest '
-                 f'of the season (now {tf["base_wins"]:.1f}), and the reason the other owner says yes. Core players are left out here; '
+                 f'of the season (now {tf["base_wins"]:.1f}), and the reason the other owner says yes; a second list ranks offers for your long-term plan. Core players are left out here; '
                  'they only move for a king\'s ransom (below).</p><div class="card">')
         for o in tf['best_by_partner'][:8]:
             O.append(f'<div class="crow"><span class="nm"><b>{esc(o["get_label"])}</b> <small>{esc(o["get_pos"])} from @{esc(o["partner"])} '
@@ -595,6 +595,16 @@ def build():
                      f'<span class="v num">+{o["my_wins"]:.2f}</span>'
                      f'<span class="sig">Give {esc(" + ".join(o["give_labels"]))} · your value {o["my_value"]:+,} · theirs {o["their_value"]:+,}'
                      f'{" · they must drop one" if o["they_must_drop"] else ""}</span></div>')
+        bd = tf.get('best_by_partner_dynasty') or []
+        if bd:
+            O.append('<div class="card"><h3>Best for the long-term plan (Contend 2026-28)</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
+                     'Dynasty value = market value across 2026-28 aged with our age curves, plus plan bonuses (spend 2027 picks, keep 2028 picks, '
+                     'fill RB2/TE now, add a WR 25 or younger). Season can\'t drop more than 0.2 wins.</div>')
+            for o in bd[:8]:
+                O.append(f'<div class="prow"><span class="pos">{esc(o["get_pos"])}</span><span><b>{esc(o["get_label"])}</b> ← @{esc(o["partner"])}: give '
+                         f'{esc(" + ".join(o["give_labels"]))} <small style="color:var(--muted)">season {o["my_wins"]:+.2f} W</small></span>'
+                         f'<span class="age"></span><span class="vv num" style="color:var(--good)">{o["dyn"]:+,}</span></div>')
+            O.append('</div>')
         rs = tf.get('ransom') or []
         if rs:
             O.append('<div class="card"><h3>King\'s ransom: what the core would cost</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'

@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.join(ROOT, 'ops'))
 import league_format as LF  # noqa: E402
 import picks as PK  # noqa: E402
 from project import lineup_points  # noqa: E402
+import dynasty_value as DV  # noqa: E402
 
 SD_MARGIN = 31.0          # SD of a weekly score difference (22 per team, as in lottery.py)
 GIVE_MIN, GET_MIN = 300, 800
@@ -117,8 +118,14 @@ def main():
                 gp = [a for a in give if not a.startswith('pick:')]
                 my_after = [p for p in my_act if p not in gp] + [get]
                 dw = exp_wins(my_rid, my_after) - base[my_rid]
-                if dw < 0.15:
-                    continue
+                # dynasty value against the long-term plan (ops/dynasty_value.py): window value + plan bonuses
+                ag = lambda a: (P.get(a) or {}).get('age')
+                pk_ = lambda a: a.startswith('pick:')
+                dyn = (DV.window_value(gmkt(get) if False else mkt(get), pos_of(get), ag(get)) + DV.plan_fit(get, pos_of(get), ag(get), mkt(get), 'get')[0]
+                       - sum(DV.window_value(gmkt(a), None if pk_(a) else pos_of(a), None if pk_(a) else ag(a)) for a in give)
+                       + sum(DV.plan_fit(a, None if pk_(a) else pos_of(a), None if pk_(a) else ag(a), gmkt(a), 'give')[0] for a in give))
+                if dw < 0.15 and not (dw >= -0.2 and dyn >= 200):
+                    continue                                   # neither a season upgrade nor a plan upgrade
                 their_after = [p for p in theirs_act if p != get] + gp
                 tdw = exp_wins(rid, their_after) - base[rid]
                 if window == 'contender' and tdw < -0.15:
@@ -133,15 +140,22 @@ def main():
                                'give': list(give), 'give_labels': [label(a) for a in give], 'get': get,
                                'get_label': P[get].get('full_name'), 'get_pos': pos_of(get),
                                'my_wins': round(dw, 2), 'my_value': round(my_val), 'their_value': round(their_val),
-                               'their_wins': round(tdw, 2), 'they_must_drop': full,
+                               'their_wins': round(tdw, 2), 'they_must_drop': full, 'dyn': round(dyn),
                                'score': round(10 * dw + my_val / 1000, 2)})
     offers.sort(key=lambda o: -o['score'])
     best_by_partner, seen_get = {}, set()
     for o in offers:
-        if o['partner'] not in best_by_partner and o['get'] not in seen_get:
+        if o['my_wins'] >= 0.15 and o['partner'] not in best_by_partner and o['get'] not in seen_get:
             best_by_partner[o['partner']] = o
             seen_get.add(o['get'])
     top = sorted(best_by_partner.values(), key=lambda o: -o['score'])
+    # the same, ranked for the long-term plan: highest dynasty value that keeps the season (>= -0.2 wins)
+    best_dyn, seen_d = {}, set()
+    for o in sorted(offers, key=lambda o: (-o['dyn'], -o['my_wins'])):
+        if o['partner'] not in best_dyn and o['get'] not in seen_d and o['dyn'] > 0:
+            best_dyn[o['partner']] = o
+            seen_d.add(o['get'])
+    top_dyn = sorted(best_dyn.values(), key=lambda o: -o['dyn'])
     # ---- king's-ransom asks: what each premium asset would cost each team ----
     # A package qualifies when the value coming back (our contract-adjusted view; picks at pick_value)
     # is at least premium x the asset's value. Among qualifying 1-3 asset packages from each team
@@ -189,7 +203,7 @@ def main():
                            'my_wins': round(dw, 2), 'their_wins': round(tdw, 2)})
     ransom.sort(key=lambda x: (x['asset_label'], x['their_overpay']))
     json.dump({'generated': time.strftime('%Y-%m-%d %H:%M'), 'from_week': wk_now, 'base_wins': round(base[my_rid], 2),
-               'n_evaluated': len(offers), 'best_by_partner': top, 'top': offers[:25], 'ransom': ransom},
+               'n_evaluated': len(offers), 'best_by_partner': top, 'best_by_partner_dynasty': top_dyn, 'top': offers[:25], 'ransom': ransom},
               open(os.path.join(DATA, 'trade_finder.json'), 'w'), indent=1)
 
     why = {'contender': 'they keep their points while contending, and the value is close',
@@ -207,6 +221,11 @@ def main():
                  f"{why[o['window']]}{' · they must drop one' if o['they_must_drop'] else ''} |")
     if not top:
         M.append('| — | no offer passes both sides right now | | | | | | |')
+    M += ['', '## Best offer to each owner for the LONG-TERM plan (Contend 2026-28)', '',
+          '_Dynasty value = market value averaged over 2026-28, aged with our measured age curves, plus plan bonuses (spend 2027 picks, '
+          'keep 2028 picks, fill RB2/TE now, add a WR 25 or younger). Season must not drop more than 0.2 wins._', '',
+          '| Owner | You give | You get | Dynasty | Season wins | Their value |', '|---|---|---|---|---|---|']
+    M += [f"| {o['partner']} | {' + '.join(o['give_labels'])} | {o['get_label']} ({o['get_pos']}) | {o['dyn']:+,} | {o['my_wins']:+.2f} | {o['their_value']:+,} |" for o in top_dyn] or ['| — | | | | | |']
     M += ['', "## King's ransom — what each core asset would cost", '',
           '_No one is untouchable; the core just needs a king\'s ransom (config `premium`): for the core, the trade evaluation must '
           'favor you by the configured surplus (e.g. +3,000) or more on market value. Per team, among the cheapest qualifying packages of up to 4 of their assets, the one that helps your season most. "Their overpay" is how far above market they would have to go; the smaller, the likelier._', '']

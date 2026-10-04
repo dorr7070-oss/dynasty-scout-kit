@@ -307,6 +307,105 @@ poll();
                    '<p class="lede">Sorted by our projected finish. Strength = rank of each position\'s starters by market value (1 = best). '
                    'Best offer and ransom come from the Trade Finder; latest intel is the newest dated note in that owner\'s profile.</p>'
                    f'<div class="grid2">{"".join(ocards)}</div></section>')
+    # ---------- six insight sections (ops/insights.py) ----------
+    ins = jload('insights.json', {}) or {}
+    rk_chip = lambda r: '' if r is None else f'<span class="chip {"good" if r <= 8 else "crit" if r >= 25 else ""}">{r}</span>'
+    sos = (ins.get('sos') or {})
+    sos_rows = ''.join(
+        f'<tr><td class="team">{esc(x["name"])}<small>{esc(x["pos"])} {esc(x["team"])}</small></td>'
+        f'<td class="n">{"—" if x["ros"] is None else x["ros"]}</td>'
+        + ''.join(f'<td class="n">{esc(p_["opp"])} {rk_chip(p_["rank"])}</td>' for p_ in x['playoffs'])
+        + '<td></td>' * (3 - len(x['playoffs'])) + '</tr>' for x in sos.get('players', []))
+    sos_html = ('<section id="sos"><div class="kicker">Schedule</div><h2 class="disp">Strength of Schedule</h2>'
+                f'<p class="lede">Each defense ranked by PPR points it allows per game to the position this season (1 = softest, {sos.get("n_teams", 32)} = toughest), '
+                f'based on {sos.get("weeks_used", 0)} weeks so far, so early ranks are noisy. Rest-of-season = average rank of the remaining regular-season opponents; '
+                'then the fantasy playoffs, weeks 15-17. Green = soft (1-8), red = tough (25+).</p>'
+                '<div class="scroller"><table><thead><tr><th>Player</th><th style="text-align:right">Rest of season</th><th style="text-align:right">Wk 15</th>'
+                f'<th style="text-align:right">Wk 16</th><th style="text-align:right">Wk 17</th></tr></thead><tbody>{sos_rows}</tbody></table></div></section>')
+
+    eff = ins.get('efficiency') or []
+    mxl = max([e['left_pg'] or 0 for e in eff] + [1])
+    eff_html = ('<section id="efficiency"><div class="kicker">Owners</div><h2 class="disp">Lineup Efficiency</h2>'
+                '<p class="lede">Share of the best possible lineup each owner actually started, and points left on the bench per game, across their games on record. '
+                'Owners who leave a lot on the bench are the easiest to sell depth to.</p><div class="card race">'
+                + ''.join(f'<div class="rrow{" you" if e["owner"] == me else ""}"><span class="nm">{esc(e["owner"])} <small style="color:var(--muted)">{e["eff"]:.1f}%</small></span>'
+                          f'<span class="track"><span class="fill" style="width:{100 * (e["left_pg"] or 0) / mxl:.0f}%;background:var(--{"crit" if (e["left_pg"] or 0) >= 25 else "warn" if (e["left_pg"] or 0) >= 18 else "good"})"></span></span>'
+                          f'<span class="v num">{e["left_pg"]:.1f}</span></div>' for e in eff)
+                + '<div class="status">Bar = points left on the bench per game.</div></div></section>')
+
+    vh = ins.get('values') or {}
+    days_ = vh.get('days') or []
+    vcards = []
+    for x in (vh.get('players') or [])[:16]:
+        ser = [(i, v) for i, v in enumerate(x['series']) if v]
+        if len(ser) < 2:
+            continue
+        lo, hi = min(v for _, v in ser), max(v for _, v in ser)
+        span = max(1, hi - lo)
+        cw, ch = 300, 70
+        pts_ = ' '.join(f'{cw * i / max(1, len(days_) - 1):.1f},{ch - 6 - (ch - 12) * (v - lo) / span:.1f}' for i, v in ser)
+        first, last = ser[0][1], ser[-1][1]
+        chg = (last - first) / first if first else 0
+        ex, ey = cw * ser[-1][0] / max(1, len(days_) - 1), ch - 6 - (ch - 12) * (last - lo) / span
+        vcards.append(f'<div class="card"><h3>{esc(x["name"])} · {esc(x["pos"])}</h3><div class="chips"><span class="chip">{last:,}</span>'
+                      f'<span class="chip {"good" if chg >= 0.05 else "crit" if chg <= -0.05 else ""}">{chg:+.0%} since {esc(days_[ser[0][0]][5:])}</span></div>'
+                      f'<svg viewBox="-4 0 {cw + 8} {ch}" style="width:100%;height:auto" role="img" aria-label="{esc(x["name"])} market value over time">'
+                      f'<polyline points="{pts_}" fill="none" stroke="var(--accent)" stroke-width="2"/>'
+                      f'<circle cx="{ex:.1f}" cy="{ey:.1f}" r="4" fill="var(--accent)"><title>{last:,} on {esc(days_[-1])}</title></circle>'
+                      f'<text x="0" y="10">{hi:,}</text><text x="0" y="{ch - 1}">{lo:,}</text></svg></div>')
+    val_html = ('<section id="values"><div class="kicker">Market</div><h2 class="disp">Value History</h2>'
+                f'<p class="lede">Market value of your players over time ({len(days_)} daily snapshots, {esc(days_[0] if days_ else "")} to {esc(days_[-1] if days_ else "")}). '
+                'Buy the dips, sell the spikes; a fall with no injury or role change behind it is usually noise.</p>'
+                f'<div class="grid2">{"".join(vcards)}</div></section>')
+
+    calc = ins.get('calculator') or []
+    calc_html = ('<section id="calc"><div class="kicker">Trades</div><h2 class="disp">What Would It Take?</h2>'
+                 '<p class="lede">Pick any player worth 800+ on another roster to see the cheapest packages of yours that clear both sides\' rules '
+                 '(rebuilders want market value back, contenders accept within 10%, core pieces only at the king’s ransom), ranked two ways: best for this season and best for your long-term plan.</p>'
+                 '<div class="card"><label for="calcq" class="kicker">Player</label>'
+                 '<input id="calcq" list="calcl" placeholder="Start typing a name…" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%">'
+                 '<datalist id="calcl">' + ''.join(f'<option value="{esc(c["name"])}">' for c in calc) + '</datalist>'
+                 '<div id="calcout" class="status">Showing the most valuable target. Type a name to switch.</div></div>'
+                 '<script type="application/json" id="calcd">' + json.dumps(calc).replace('</', '<' + chr(92) + '/') + '</script>'
+                 """<script>(function(){const C=JSON.parse(document.getElementById('calcd').textContent);const q=document.getElementById('calcq'),o=document.getElementById('calcout');
+const e=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function show(t){if(!t){o.textContent='No match. Pick a name from the list.';return}
+let h=`<p style="margin:10px 0 4px"><b>${e(t.name)}</b> · ${e(t.pos)} ${e(t.team||'')} · @${e(t.owner)} (${e(t.window)}) · value ${t.value.toLocaleString()}</p>`;
+const row=(p,i)=>`<div class="prow" style="grid-template-columns:1.6em minmax(0,1fr) 4.6em 5em"><span class="pos">${i+1}</span><span>${p.give.map(e).join(' + ')}${p.why&&p.why.length?`<br><small style="color:var(--muted)">${p.why.map(e).join(' · ')}</small>`:''}</span><span class="vv num" style="color:${p.my_wins>=0.1?'var(--good)':p.my_wins<=-0.1?'var(--crit)':'var(--ink2)'}">${p.my_wins>=0?'+':''}${p.my_wins.toFixed(2)} W</span><span class="vv num" style="color:${p.dyn>=150?'var(--good)':p.dyn<=-150?'var(--crit)':'var(--ink2)'}">${p.dyn>=0?'+':''}${p.dyn.toLocaleString()}</span></div>`;
+if(!t.packages.length)h+='<p>No package of yours clears both sides’ rules for this player.</p>';
+else{h+='<div class="kicker" style="margin-top:8px">Best for this season</div>'+t.packages.map(row).join('');h+='<div class="kicker" style="margin-top:10px">Best for the long-term plan (Contend 2026-28)</div>'+((t.dynasty||[]).map(row).join('')||'<p class="status">None that keeps the season intact.</p>')}
+o.innerHTML=h+'<div class="status">Columns: what you give · expected wins this season · dynasty value across 2026-28 (aged with our age curves, plus the plan notes under each package).</div>'}
+q.addEventListener('input',()=>{const t=C.find(c=>c.name.toLowerCase()===q.value.trim().toLowerCase());if(t)show(t)});show(C[0]);})();</script>"""
+                 + '</section>')
+
+    acc = ins.get('accuracy') or {}
+    aw = acc.get('weeks') or []
+    bt = acc.get('backtest_2025') or {}
+    acc_html = ('<section id="accuracy"><div class="kicker">Our model</div><h2 class="disp">Projection Accuracy</h2>'
+                f'<p class="lede">Average miss in PPR points per player each finished week: our projection (rebuilt from what was known before that week) vs Sleeper\'s, '
+                f'for players Sleeper projected 5+. Lower is better. Full 2025 test: ours {bt.get("ours", "—")} vs Sleeper {bt.get("sleeper", "—")}.</p>'
+                '<div class="scroller"><table><thead><tr><th>Week</th><th style="text-align:right">Players</th><th style="text-align:right">Ours</th><th style="text-align:right">Sleeper</th>'
+                '<th style="text-align:right">QB</th><th style="text-align:right">RB</th><th style="text-align:right">WR</th><th style="text-align:right">TE</th></tr></thead><tbody>'
+                + ''.join(f'<tr><td class="rk">{a["week"]}</td><td class="n">{a["n"]}</td>'
+                          f'<td class="n" style="color:var(--{"good" if a["ours"] < a["sleeper"] else "ink2"})">{a["ours"]:.2f}</td><td class="n">{a["sleeper"]:.2f}</td>'
+                          + ''.join((f'<td class="n">{a["by_pos"][p][0]:.1f} / {a["by_pos"][p][1]:.1f}</td>' if p in a["by_pos"] else '<td></td>') for p in ('QB', 'RB', 'WR', 'TE'))
+                          + '</tr>' for a in aw)
+                + '</tbody></table></div><div class="status">Position columns: ours / Sleeper. Green = we beat Sleeper that week.</div></section>')
+
+    capd = ins.get('capital') or {}
+    ct = capd.get('teams') or []
+    mxc = max([t['total'] for t in ct] + [1])
+    cap_html = ('<section id="capital"><div class="kicker">Picks</div><h2 class="disp">Draft Capital</h2>'
+                '<p class="lede">Every team\'s 2027-2029 picks, valued by tier over the projected finish and lottery odds. Bar = total pick value; '
+                'the line under it shows 1sts by year, the best pick, and where that team\'s own 2027 1st sits.</p><div class="card">'
+                + ''.join(f'<div class="crow{" you" if t["owner"] == me else ""}"><span class="nm"><b>{esc(t["owner"])}</b> <small>{t["n"]} picks · {t["firsts"]} firsts</small></span>'
+                          f'<span class="track"><span class="fill" style="width:{100 * t["total"] / mxc:.0f}%;background:var(--gold)"></span></span>'
+                          f'<span class="v num">{t["total"]:,}</span>'
+                          f'<span class="sig">1sts: ' + ', '.join(f'{y} ×{c}' for y, c in t['firsts_by_year'].items() if c) + (f' · best: {esc(t["best"][0])} ({t["best"][1]:,})' if t.get('best') else '')
+                          + (f' · own 2027 1st held by {esc(t["own_1st_owner"])}' if t.get('own_1st_owner') and t['own_1st_owner'] != t['owner'] else '')
+                          + (f' · own 2027 1st top-3 odds {t["own_1st_top3_trend"][-1]:.0%}' if t.get('own_1st_top3_trend') and t['own_1st_top3_trend'][-1] is not None else '')
+                          + '</span></div>' for t in ct)
+                + '</div></section>')
     ideas = ['<b>Rest-of-season strength of schedule</b> by position, from defenses\' points allowed — flags which of your players face soft or tough paths into the fantasy playoffs (weeks 15-17).',
              '<b>Lineup efficiency tracker</b> for every owner — points left on the bench each week; owners who leave a lot are the easiest to sell depth to.',
              '<b>Trade value history chart</b> per player (market value over the season from the daily snapshots) — buy the dips, sell the spikes.',
@@ -317,8 +416,27 @@ poll();
                   f'<ol class="ideas">{"".join(f"<li>{i}</li>" for i in ideas)}</ol></section>')
     head = (f'<header><div class="eyebrow">{esc(LF.LEAGUE_NAME)} · Analysis</div><h1 class="disp">Season Analysis</h1>'
             f'<p class="status">Updated {esc(now)} Arizona time · our own projections · refreshes 4x a day and on every update</p>{links("Analysis")}</header>'
-            '<nav class="jump" aria-label="Sections"><a href="#path">Playoff path</a><a href="#trends">Player trends</a><a href="#owners">Owner scouting</a><a href="#ideas">More ideas</a></nav>')
-    open(os.path.join(ROOT, 'dashboards', 'analysis.html'), 'w').write(page('Season Analysis', head + path_html + trends_html + owners_html + ideas_html))
+            '<nav class="jump" aria-label="Sections"><a href="#plan">Plan check</a><a href="#path">Playoff path</a><a href="#calc">What would it take</a><a href="#sos">Schedule</a><a href="#trends">Player trends</a>'
+            '<a href="#values">Value history</a><a href="#owners">Owner scouting</a><a href="#efficiency">Lineup efficiency</a><a href="#capital">Draft capital</a><a href="#accuracy">Accuracy</a></nav>')
+    pc = ins.get('plan') or {}
+    wr = pc.get('window_rank') or []
+    mxw = max([x['players'] + x['picks'] for x in wr] + [1])
+    plan_rows = ''.join(f'<tr><td class="team">{esc(t["name"])}<small>with {esc(t["partner"])}</small></td>'
+                        f'<td class="n" style="color:var(--{"good" if (t.get("dynasty") or 0) >= 150 else "crit" if (t.get("dynasty") or 0) <= -150 else "ink2"})">{(t.get("dynasty") or 0):+,}</td></tr>'
+                        for t in pc.get('trades') or [])
+    plan_html = ('<section id="plan"><div class="kicker">Long-term plan</div><h2 class="disp">Plan Check · Contend 2026-28</h2>'
+                 f'<p class="lede">Window strength = each team\'s top 16 players valued across the next {pc.get("window_years", 3)} seasons (aged with our measured age curves) '
+                 f'plus its 2027-28 picks. You rank <b>{pc.get("my_rank", "—")} of {len(wr)}</b>. The trade plan lifts your players\' window value to '
+                 f'<b>{pc.get("after_players", 0):,}</b> and nets <b>{(pc.get("dynasty_total") or 0):+,}</b> in plan value after picks spent.</p>'
+                 '<div class="cols"><div class="card race">' + ''.join(
+                     f'<div class="rrow{" you" if x["owner"] == me else ""}"><span class="nm">{esc(x["owner"])}</span>'
+                     f'<span class="track"><span class="fill" style="width:{100 * (x["players"] + x["picks"]) / mxw:.0f}%;background:var(--accent)"></span></span>'
+                     f'<span class="v num">{(x["players"] + x["picks"]) / 1000:.1f}k</span></div>' for x in wr)
+                 + '</div><div class="card"><h3>Trade plan, long-term value</h3><div class="scroller" style="border:none"><table style="min-width:0"><tbody>'
+                 + plan_rows + '</tbody></table></div><div class="status">Season effect of each trade is on the Playoff Path above; '
+                 'the What Would It Take tool ranks every target both ways.</div></div></div></section>')
+    open(os.path.join(ROOT, 'dashboards', 'analysis.html'), 'w').write(page('Season Analysis', head + plan_html + path_html + calc_html + sos_html + trends_html + val_html
+                                                                           + owners_html + eff_html + cap_html + acc_html))
     print(f'analysis dashboards -> dashboards/gameday.html (week {week}, {len(M) // 2} matchups) + dashboards/analysis.html '
           f'({len(rows)} weeks on the path; exp. wins {cum_b:.1f} now / {cum_p:.1f} with plan; {len(tcards)} player trend cards; {len(ocards)} owner cards)')
 
