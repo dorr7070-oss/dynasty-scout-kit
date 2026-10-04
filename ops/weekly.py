@@ -38,6 +38,7 @@ K_SHRINK, K_FORM = 300, 3
 # zeroed every Rams player as 'bye' (caught 2026-10-02 in the kit test: Davante Adams 14.7 -> 0).
 SLEEPER_TO_NV = {'LAR': 'LA'}
 INJ = {}   # measured game-day odds by status|practice, loaded in live()
+NEWS = {}  # same-day report overrides, data/news_overrides.json
 MARKET = ('implied', 'matchup')
 CONDITIONS = ('wind', 'temp', 'precip', 'rest', 'travel', 'backup_qb')
 # Extremes only: the backtest (2026-10-02) showed blanket multipliers HURT — Sleeper already prices
@@ -291,6 +292,9 @@ def live():
     P = json.load(open(os.path.join(DATA, 'players.json')))
     R = json.load(open(os.path.join(DATA, str(season), 'rosters.json')))
     U = {u['user_id']: u['display_name'] for u in json.load(open(os.path.join(DATA, str(season), 'users.json')))}
+    global NEWS
+    _np = os.path.join(DATA, 'news_overrides.json')    # {sleeper_id: {"p_play": 0.2, "note": "...", "week": 4}}
+    NEWS = json.load(open(_np)) if os.path.exists(_np) else {}
     _ip = os.path.join(DATA, 'injury_effects.json')
     global INJ
     INJ = json.load(open(_ip))['gameday'] if os.path.exists(_ip) else {}
@@ -343,6 +347,10 @@ def live():
                     else 'Full' if 'Full' in (pr.get('practice') or '') else 'none'
                 g = (INJ.get(f'{st_}|{pl}') or INJ.get(f'{st_}|none') or {})
                 row['p_play'] = g.get('p_play', 0.25 if st_ == 'Doubtful' else 0.7)
+                nv = NEWS.get(pid)
+                if nv:   # a same-day report (beat writer / insider) outranks the practice-based base rate
+                    row['p_play'] = nv['p_play']
+                    row['flags'].append(f"news: {nv['note']} — {nv['p_play']:.0%}")
                 row['flags'].append(f"{st_} ({pr.get('practice') or 'no practice report yet'}) — plays {row['p_play']:.0%} historically")
             w = ctx['weather']
             if isinstance(w, dict) and (w['wind'] >= 15 or w['snow'] >= 0.5 or w['rain'] >= 5):
@@ -358,10 +366,18 @@ def live():
             players[pid] = row
 
     flex_pos = set().union(*LF.FLEX_SLOTS) if LF.FLEX_SLOTS else set()
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now_et = datetime.now(ZoneInfo('America/New_York')).strftime('%Y-%m-%d %H:%M')
+    locked = {pid for pid, x in players.items() if x.get('ko') and x['ko'] <= now_et}   # kicked off: frozen
     teams = {}
     for r in R:
+        set_ids = set(r.get('starters') or [])
+        # a benched player whose game has started can't come in; a started starter can't go out
         mine = [pid for pid in (r.get('players') or []) if pid in players
-                and pid not in (r.get('taxi') or []) and pid not in (r.get('reserve') or [])]
+                and pid not in (r.get('taxi') or []) and pid not in (r.get('reserve') or [])
+                and not (pid in locked and pid not in set_ids)]
+        BIG = 10000.0   # forces locked starters into the lineup pick; removed again from totals below
 
         def hedge(pid, lineup):
             """Best healthy BENCH player (not in `lineup`) who can fill his slot and kicks off at the same
@@ -369,18 +385,19 @@ def live():
             x = players[pid]
             elig = flex_pos if x['pos'] in flex_pos else {x['pos']}
             cands = [q for q in mine if q != pid and q not in lineup and players[q]['pos'] in elig and players[q]['proj'] > 0
-                     and 'p_play' not in players[q] and (players[q].get('ko') or '') >= (x.get('ko') or '~')]
+                     and 'p_play' not in players[q] and q not in locked and (players[q].get('ko') or '') >= (x.get('ko') or '~')]
             return max(cands, key=lambda q: players[q]['proj'], default=None)
 
         # pass 1: game-time players at full value (assume a fallback exists); pass 2: discount the ones
         # whose lineup has no bench fallback by their measured odds of playing, and re-pick the lineup
-        _, first = LF.best_lineup_ids((players[p]['proj'], p, players[p]['pos']) for p in mine)
+        _, first = LF.best_lineup_ids((players[p]['proj'] + (BIG if p in locked else 0), p, players[p]['pos']) for p in mine)
         unhedged = {p for p in mine if 'p_play' in players[p] and not hedge(p, first)}
 
         def lineup_val(pid):
             x = players[pid]
             return x['proj'] * x['p_play'] if pid in unhedged else x['proj']
-        total, best = LF.best_lineup_ids((lineup_val(p), p, players[p]['pos']) for p in mine)
+        _, best = LF.best_lineup_ids((lineup_val(p) + (BIG if p in locked else 0), p, players[p]['pos']) for p in mine)
+        total = sum(lineup_val(p) for p in best)
         set_now = [p for p in (r.get('starters') or []) if p in players]
         cur = sum(lineup_val(p) for p in set_now)
         ins = [p for p in best if p not in set_now]

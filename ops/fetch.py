@@ -19,6 +19,9 @@ API = 'https://api.sleeper.app/v1'
 
 
 def get(url, retries=3):
+    # cache-buster: Sleeper's CDN can serve a roster that is a minute or two old, which hid a lineup
+    # swap made just before a game-day refresh (2026-10-04). The API ignores the extra parameter.
+    url += ('&' if '?' in url else '?') + f'_={int(time.time())}'
     for i in range(retries):
         try:
             with urllib.request.urlopen(url, timeout=30) as r:
