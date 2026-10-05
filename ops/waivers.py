@@ -56,6 +56,8 @@ def main():
         tot, _ = LF.best_lineup_ids([(ros.get(p, 0), p, P[p]['position']) for p in active] + [(ros.get(pid, 0), pid, pos)])
         return tot - base
 
+    _tp = os.path.join(DATA, 'trending.json')
+    TR = json.load(open(_tp)).get('players', {}) if os.path.exists(_tp) else {}
     fa = []
     for pid, p in P.items():
         if pid in rostered or p.get('position') not in LF.POS or not p.get('team') or p.get('status') not in ('Active', None):
@@ -73,7 +75,8 @@ def main():
                    'ros': round(ros.get(pid, 0), 1), 'gain': round(gain(pid), 1), 'value': val(pid),
                    'snap': u.get('snap_pct'), 'snap_trend': u.get('snap_trend'), 'tgt_share': u.get('target_share'),
                    'route': u.get('route_pct_est'), 'rz': (u.get('rz_tgt_share') or 0) + (u.get('rz_carry_share') or 0),
-                   'rise': round(rise, 2), 'injury': p.get('injury_status')})
+                   'rise': round(rise, 2), 'injury': p.get('injury_status'),
+                   'adds_24h': (TR.get(pid) or {}).get('add_24h', 0), 'drops_24h': (TR.get(pid) or {}).get('drop_24h', 0)})
 
     # this league's FAAB market
     bids = []
@@ -90,9 +93,14 @@ def main():
     season_left = max(0.15, (reg_end - week + 1) / reg_end)
 
     def bid(x):
+        # 100k+ Sleeper adds in 24h = the whole fantasy world saw the news; expect competition here too (a rule:
+        # there is no history of trending counts to measure it against) -> one tier up
+        hot = x.get('adds_24h', 0) >= 100_000
         if x['gain'] >= 2:
-            b = pctl(0.75)
+            b = pctl(0.9 if hot else 0.75)
         elif x['gain'] > 0 or x['value'] >= 1500:
+            b = pctl(0.75 if hot else 0.5)
+        elif hot:
             b = pctl(0.5)
         else:
             return 0

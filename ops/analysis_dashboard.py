@@ -74,7 +74,7 @@ def links(current):
 
 
 def page(title, body, scripts=''):
-    return (f'<title>{esc(title)}</title><style>{CSS}</style><div class="wrap">{body}</div>{scripts}')
+    return (f'<meta charset="utf-8"><title>{esc(title)}</title><style>{CSS}</style><div class="wrap">{body}</div>{scripts}')
 
 
 def main():
@@ -91,7 +91,7 @@ def main():
     league = json.load(open(os.path.join(DATA, season, 'league.json')))
     done = (league.get('settings') or {}).get('last_scored_leg', 0)
     week = done + 1
-    now = datetime.now().strftime('%a %b %-d, %-I:%M %p')
+    now = LF.stamp()
     pos_of = lambda s: (P.get(s) or {}).get('position')
     nm = lambda s: (P.get(s) or {}).get('full_name') or (P.get(s) or {}).get('last_name') or s
     teamof = lambda s: (P.get(s) or {}).get('team') or s
@@ -167,6 +167,8 @@ poll();
     plan_roster = list(act[my_rid])
     for t in plan['trades']:
         plan_roster = [s for s in plan_roster if s not in t['give']] + list(t['get'])
+    from decided import decided, result
+    LOCK = decided(week)
     rows = []
     cum_b = cum_p = 0.0
     for g in sched.get(my_rid, []):
@@ -177,6 +179,9 @@ poll();
         mplan = lineup_points(plan_roster, w, PW, pos_of)
         opp = lineup_points(act[g['opp']], w, PW, pos_of)
         b, p = phi((mine - opp) / 31), phi((mplan - opp) / 31)
+        fixed = result(LOCK, my_rid, g['opp'], w, week)
+        if fixed is not None:            # already played this week: no trade changes it
+            b = p = fixed
         cum_b += b
         cum_p += p
         rows.append({'w': w, 'opp': rid_owner.get(g['opp']), 'me': mine, 'plan': mplan, 'opp_pts': opp, 'b': b, 'p': p})
@@ -229,7 +234,7 @@ poll();
         bw2 = cw / max(1, len(pts))
         g = [f'<svg viewBox="0 0 {cw} {ch + 34}" style="width:100%;height:auto" role="img" aria-label="{esc(nm(s))} weekly points">']
         for i, (w, p, sn) in enumerate(pts):
-            h = ch * p / mx
+            h = max(0.0, ch * p / mx)      # a negative-scoring week draws no bar (SVG rejects a negative height)
             g.append(f'<rect x="{i * bw2 + 3:.1f}" y="{ch - h:.1f}" width="{bw2 - 6:.1f}" height="{h:.1f}" rx="3" fill="var(--accent)"><title>Week {w}: {p:.1f} pts{"" if sn is None else f", {sn:.0%} snaps"}</title></rect>'
                      f'<text x="{i * bw2 + bw2 / 2:.1f}" y="{ch + 12}" text-anchor="middle">W{w}</text>')
         yb = ch - ch * base / mx
@@ -415,7 +420,7 @@ q.addEventListener('input',()=>{const t=C.find(c=>c.name.toLowerCase()===q.value
     ideas_html = ('<section id="ideas"><div class="kicker">Next</div><h2 class="disp">More Analysis We Can Add</h2>'
                   f'<ol class="ideas">{"".join(f"<li>{i}</li>" for i in ideas)}</ol></section>')
     head = (f'<header><div class="eyebrow">{esc(LF.LEAGUE_NAME)} · Analysis</div><h1 class="disp">Season Analysis</h1>'
-            f'<p class="status">Updated {esc(now)} Arizona time · our own projections · refreshes 4x a day and on every update</p>{links("Analysis")}</header>'
+            f'<p class="status">Updated {esc(now)} · our own projections · refreshed on every update</p>{links("Analysis")}</header>'
             '<nav class="jump" aria-label="Sections"><a href="#plan">Plan check</a><a href="#path">Playoff path</a><a href="#calc">What would it take</a><a href="#sos">Schedule</a><a href="#trends">Player trends</a>'
             '<a href="#values">Value history</a><a href="#owners">Owner scouting</a><a href="#efficiency">Lineup efficiency</a><a href="#capital">Draft capital</a><a href="#accuracy">Accuracy</a></nav>')
     pc = ins.get('plan') or {}

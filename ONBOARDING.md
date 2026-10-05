@@ -107,17 +107,18 @@ playoffs, rookie draft) so every number fits your league instead of a generic on
 and `dashboards` folders inside the kit.**
 
 **Claude does:**
-1. Runs the full pipeline (`python update.py` on Windows, `./update.sh` on Mac), about 2-5 minutes.
-2. Builds two dashboards: **Command Center** (playoff race, power rankings, your starters vs the
-   league, your picks, action cards, trade grades, owner board) and **Asset Board** (every
-   roster, every pick 2027-2029, a Prospects tab for the college classes).
-3. Shows them to you. If your Claude can **publish artifacts**, it publishes them as private web
-   pages you can open on your phone; sharing is off until you turn it on with the page's
-   **Share** button. Otherwise it opens the files in your browser.
+1. Runs the full pipeline (`python update.py` on Windows, `./update.sh` on Mac): about 10 minutes the first time, 3-5 minutes after that.
+2. Builds **one dashboard** with tabs: **This Week** (game day, your lineup call, actions), **Trades**
+   (trade finder, analyzer, grades), **Season** (playoff race, projections), **Players** (lookup, injuries,
+   market movers), **League** (power rankings, owners) and **Picks** (every roster and pick 2027-2029, college
+   prospects). Plus an **Ask** tab where you type a question about your team.
+3. Shows it to you. If your Claude can **publish artifacts**, it publishes it as a private web
+   page you can open on your phone; sharing is off until you turn it on with the page's
+   **Share** button. Otherwise it opens the file in your browser.
 4. Reviews your team with you and runs the strategy session in `STRATEGY.md` (say **"Build my strategy"** any time to redo it), writing your **CURRENT STRATEGY** into your profile, so every
    later trade is judged against a plan.
 
-**It worked when:** you can see both dashboards headed with your team name, and `doctor.py`
+**It worked when:** you can see the dashboard headed with your team name, and `doctor.py`
 shows phase 4 all OK.
 
 **From here on, you have the full tool.** Phases 5-8 add extras.

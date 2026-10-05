@@ -112,9 +112,9 @@ def main():
     have_data = os.path.exists(os.path.join(ROOT, 'data', 'values', 'consensus.json'))
     add(OK if have_data else TODO, '4. First data pull',
         'done' if have_data else f'Run: {py} update.py')
-    dash = [f for f in ('league.html', 'assets.html') if os.path.exists(os.path.join(ROOT, 'dashboards', f))]
-    add(OK if len(dash) == 2 else TODO, '4. Dashboards built',
-        'dashboards/league.html, dashboards/assets.html' if len(dash) == 2 else f'Run: {py} update.py')
+    hub = os.path.exists(os.path.join(ROOT, 'dashboards', 'hub.html'))
+    add(OK if hub else TODO, '4. Dashboard built',
+        'dashboards/hub.html' if hub else f'Run: {py} update.py')
     pf = os.path.join(ROOT, 'profiles', f'{me}.md') if me else ''
     has_strat = bool(pf) and os.path.exists(pf) and 'CURRENT STRATEGY' in open(pf, encoding='utf-8').read()
     add(OK if has_strat else TODO, '4. Your strategy written down',

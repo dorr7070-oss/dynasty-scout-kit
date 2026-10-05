@@ -315,6 +315,8 @@ def live():
     out_status = ('Out', 'IR', 'Sus', 'PUP', 'NA', 'DNR', 'COV')
     out_qbs = {gid for gid, sid in S.gs.items() if (P.get(sid, {}).get('injury_status') in out_status
                                                        or prac.get(sid, {}).get('report') == 'Out')}
+    import absence as AB
+    ABS = AB.live(int(season), week)
     players = {}
     for r in R:
         for pid in r.get('players') or []:
@@ -333,6 +335,12 @@ def live():
             pts, n = fm.get(pid, (0, 0))
             base = sl.get(pid, 0) if base_kind == 'sleeper' else (pts + K_FORM * sl.get(pid, 0)) / (n + K_FORM)
             proj, parts = score(base, effects, pos, ctx, mi, factors, chosen.endswith('+extremes'))
+            # missing starters (ops/absence.py): own OL / opposing DB and front; only holdout-approved effects move it
+            nv2sl = {v: k for k, v in SLEEPER_TO_NV.items()}
+            am, aflag = AB.multiplier(pos, team, nv2sl.get(ctx['opp'], ctx['opp']), ABS)
+            if aflag:
+                proj *= am
+                row['flags'].append(aflag)
             status = p.get('injury_status')
             pr = prac.get(pid, {})
             if status in out_status or pr.get('report') == 'Out':
@@ -348,6 +356,8 @@ def live():
                 g = (INJ.get(f'{st_}|{pl}') or INJ.get(f'{st_}|none') or {})
                 row['p_play'] = g.get('p_play', 0.25 if st_ == 'Doubtful' else 0.7)
                 nv = NEWS.get(pid)
+                if nv and nv.get('week') not in (None, week):   # a report is about ONE game; last week's never carries over
+                    nv = None
                 if nv:   # a same-day report (beat writer / insider) outranks the practice-based base rate
                     row['p_play'] = nv['p_play']
                     row['flags'].append(f"news: {nv['note']} — {nv['p_play']:.0%}")

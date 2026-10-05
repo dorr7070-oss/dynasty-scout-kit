@@ -7,6 +7,7 @@ data/*
 !data/age_curve.json
 !data/injury_effects.json
 !data/our_model.json
+!data/absence_effects.json
 dashboards/
 profiles/
 LEAGUE.md

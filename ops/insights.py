@@ -118,8 +118,16 @@ def main():
     act = {r['roster_id']: [s for s in (r['players'] or []) if s not in (r.get('reserve') or []) and s not in (r.get('taxi') or [])] for r in R}
     phi = lambda x: 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
+    from decided import decided, result
+    LOCK = decided(done + 1)             # games already over this week count as played, whatever the trade
+
     def ew(rid, pl):
-        return sum(phi((lineup_points(pl, g['wk'], proj_w, pos_of) - g['opp_pts']) / 31) for g in sch.get(rid, []) if g['wk'] > done)
+        out = 0.0
+        for g in sch.get(rid, []):
+            if g['wk'] > done:
+                r = result(LOCK, rid, g['opp'], g['wk'], done + 1)
+                out += r if r is not None else phi((lineup_points(pl, g['wk'], proj_w, pos_of) - g['opp_pts']) / 31)
+        return out
     base_me = ew(my_rid, act[my_rid])
     give = [s for s in act[my_rid] if pos_of(s) in LF.POS and mkt(s) >= 250]
     gpick = []

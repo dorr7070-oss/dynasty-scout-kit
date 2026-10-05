@@ -139,8 +139,32 @@ def main():
         else:
             c['signal'] = f"DON'T pay full price: worth ~{round((1 - c['mult']) * 100)}% less until his March landing spot is known"
     cal.sort(key=lambda c: -c['market'])
+    # cut risk next offseason (ops/cap.py, OverTheCap dead money vs savings) for players signed beyond this season
+    cr_p = os.path.join(DATA, 'cap_risk.json')
+    cr = json.load(open(cr_p)) if os.path.exists(cr_p) else {'players': {}}
+    cuts = []
+    for pid, x in cr['players'].items():
+        nxt = (x['seasons'] or {}).get(str(season + 1))
+        mkt_v = round((cons.get(pid) or {}).get('mean_market') or (cons.get(pid) or {}).get('mean') or 0)
+        if x['next_tier'] not in ('easy cut', 'cuttable') or mkt_v < 800 or not nxt or nxt['save_cut'] < 2_000_000:
+            continue
+        o = owner.get(pid)
+        save = f"${nxt['save_cut'] / 1e6:.1f}M saved vs ${nxt['dead_cut'] / 1e6:.1f}M dead"
+        if x['vet_easy_cut']:
+            sig = (f'SELL before the offseason: his team can cut him ({save})' if o == me
+                   else f"DON'T pay for {season + 1}+: his team can cut him ({save})")
+        elif x['next_tier'] == 'easy cut':
+            sig = f'role risk if he slips: cheap to cut in {season + 1} ({save})'
+        else:
+            sig = f'cuttable in {season + 1} ({save}); matters only if production fades'
+        cuts.append({'pid': pid, 'name': x['name'], 'pos': x['pos'], 'age': x['age'], 'team': x['team'], 'owner': o,
+                     'market': mkt_v, 'tier': x['next_tier'], 'vet': x['vet_easy_cut'], 'save': nxt['save_cut'],
+                     'dead': nxt['dead_cut'], 'signal': sig})
+    cuts.sort(key=lambda c: (not c['vet'], c['tier'] != 'easy cut', -c['market']))
     json.dump({'season': season, 'free_agency': f'NFL league year opens mid-March {season + 1} (exact date set by the NFL)',
-               'trade_deadline_week': dl, 'players': cal}, open(os.path.join(DATA, 'contract_calendar.json'), 'w'), indent=1)
+               'trade_deadline_week': dl, 'players': cal, 'cut_risk': cuts,
+               'cut_risk_note': f'OverTheCap {season + 1} pre-June-1 cut: savings vs dead money (rule, not a fitted probability)'},
+              open(os.path.join(DATA, 'contract_calendar.json'), 'w'), indent=1)
     big = sorted(cal, key=lambda c: c['adjusted'] - c['market'])[:5]
     print(f'contracts -> {adjusted} contract-year players adjusted (future seasons only); calendar: {len(cal)} players >= 800'
           + ('; biggest cuts: ' + ', '.join(f"{c['name']} {c['market']:,}->{c['adjusted']:,}" for c in big) if big else ''))

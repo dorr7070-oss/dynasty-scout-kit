@@ -126,6 +126,7 @@ me = roster_of[my_rid]
 my_players = [p for p in (me.get('players') or []) if posn(p) in POS]
 my_players.sort(key=lambda p: -V(p))
 faab_used = (me.get('settings') or {}).get('waiver_budget_used', 0)
+faab_budget = (json.load(open(os.path.join(ROOT, 'data', latest, 'league.json'))).get('settings') or {}).get('waiver_budget') or 100
 my_place = PPROJ.get(my_rid, 8)
 wins = (me.get('settings') or {}).get('wins', 0)
 losses = (me.get('settings') or {}).get('losses', 0)
@@ -156,7 +157,8 @@ holes = [p for p in POS if my_pos_rank[p] >= LF.HOLE_RANK and LF.CORE[p]]
 # ============================ hand-maintained reads ==========================
 # YOUR personal layer. Claude keeps these current as you trade and scout; the rest of
 # the dashboard is generated from data. Starter content below is neutral — replace it.
-OPEN_DECISIONS = ("Run ./update.sh, then ask Claude for a full league review · set your CURRENT STRATEGY in "
+OPEN_DECISIONS_DATE = '2000-01-01'   # set to today whenever OPEN_DECISIONS is rewritten; ops/freshness.py flags it at 3+ days
+OPEN_DECISIONS = ("Say \"update everything\", then ask Claude for a full league review · set your CURRENT STRATEGY in "
                   "profiles/<your username>.md · set this week's lineup")
 
 MY_ACTIONS = [
@@ -412,6 +414,7 @@ def _odds():
 
 def build():
     O = []
+    O.append('<meta charset="utf-8">')
     O.append(f'<title>Dynasty Command Center — {esc(profiles.get(MY,{}).get("team",MY) or MY)}</title>')
     O.append(f'<style>{CSS}</style>')
     O.append('<div class="wrap">')
@@ -420,7 +423,9 @@ def build():
     my = metrics[my_rid]
     O.append('<header>')
     O.append(f'<div class="eyebrow">{esc(LF.LEAGUE_NAME)} · Command Center</div>')
-    O.append(f'<h1 class="disp">{esc(team_name(my_rid))}</h1>')
+    _my_team = next(((u.get('metadata') or {}).get('team_name') or u.get('display_name')
+                     for u in json.load(open(os.path.join(ROOT, 'data', latest, 'users.json'))) if u.get('display_name') == MY), MY)
+    O.append(f'<h1 class="disp">{esc(_my_team.strip())}</h1>')   # the owner's own Sleeper team name — no hand-typed names
     cut = ('last playoff spot' if my_place == PLAYOFF_SPOTS else
            'in the playoffs' if my_place < PLAYOFF_SPOTS else 'misses the playoffs')
     podds, ppw = _odds()
@@ -432,14 +437,14 @@ def build():
              (f'#{win_rank[my_rid]}', 'Win-now rank', 'starting lineup value'),
              (f'#{dyn_rank[my_rid]}', 'Dynasty rank', 'roster + picks'),
              (f'{ppw.get(my_rid, 0):.0f}', 'Pts / week', 'rest of season, projected'),
-             (f'${100 - faab_used}', 'FAAB left', '')]
+             (f'${faab_budget - faab_used}', 'FAAB left', '')]
     O.append('<div class="tiles" style="margin-top:14px">' + ''.join(
         f'<div class="tile"><div class="v">{esc(v)}</div><div class="l">{esc(l)}</div><div class="n">{esc(n)}</div></div>'
         for v, l, n in tiles) + '</div>')
     items = [x.strip() for x in OPEN_DECISIONS.split(' · ') if x.strip()]
     O.append('<div class="todo"><div class="kicker" style="margin-top:14px">On the clock</div><ul>' +
              ''.join(f'<li>{esc(x)}</li>' for x in items) + '</ul></div>')
-    O.append(f'<p class="sub" style="font-size:12px;color:var(--muted)">Updated {datetime.now().strftime("%a %b %-d, %-I:%M %p")} Arizona time from live Sleeper data · refreshes automatically 4x a day and on every update</p>')
+    O.append(f'<p class="sub" style="font-size:12px;color:var(--muted)">Updated {LF.stamp()} from live league data · refreshed on every update</p>')
     _links = CFG.get('dashboard_links') or {}
     if _links:
         O.append('<nav style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' + ''.join(
@@ -509,11 +514,13 @@ def build():
         opj = json.load(open(_op))
         mdl, tms = opj.get('model') or {}, opj.get('teams') or {}
         order_ = sorted(tms, key=lambda k: tms[k]['exp_place'])
+        _bt = mdl.get('blend_test') or {}
         O.append('<section><div class="kicker">Our model</div><h2 class="disp">Our Projections vs Sleeper</h2>'
-                 f'<p class="lede">Built from our own data, not Sleeper\'s: recent form, targets/carries/attempts priced at measured rates, '
-                 f'last season, Vegas lines, extreme weather, backup QBs and injuries. Tested on 2025 games it had never seen: error '
-                 f'{mdl.get("ours_mae", "—")} points per player-week vs Sleeper\'s {mdl.get("sleeper_mae", "—")}. Bar = our playoff odds; '
-                 f'the tick marks Sleeper-based odds.</p><div class="card race">')
+                 f'<p class="lede">Our model (recent form, targets/carries/attempts priced at measured rates, last season, Vegas lines, '
+                 f'extreme weather, backup QBs and injuries) blended with Sleeper\'s projections where the mix tested better. On 2025 '
+                 f'weeks it never saw: blend {_bt.get("blend", "—")} points of error per player-week, ours {_bt.get("ours", "—")}, '
+                 f'Sleeper {_bt.get("sleeper", "—")} (weights per position: {", ".join(f"{k} {round(v * 100)}% ours" for k, v in (mdl.get("blend") or {}).items())}). '
+                 f'Bar = blended playoff odds; the tick marks Sleeper-only odds.</p><div class="card race">')
         for k in order_:
             t = tms[k]
             pct, sp = t['playoff'] * 100, (t.get('sleeper_playoff') or 0) * 100
@@ -616,6 +623,38 @@ def build():
                     O.append(f'<div class="prow"><span class="pos"></span><span><b>{esc(x["asset_label"])}</b> ← @{esc(x["partner"])}: '
                              f'{esc(" + ".join(x["get_labels"]))} <small style="color:var(--muted)">value back {x["value_back"]:,} · '
                              f'your wins {x["my_wins"]:+.2f}</small></span><span class="age"></span><span class="vv num">{x["their_overpay"]:+,}</span></div>')
+            O.append('</div>')
+        O.append('</div></section>')
+    # news radar + data check (added 2026-10-04: always work off the most current information)
+    _nw = json.load(open(os.path.join(ROOT, 'data', 'news.json'))) if os.path.exists(os.path.join(ROOT, 'data', 'news.json')) else None
+    _fr = json.load(open(os.path.join(ROOT, 'data', 'freshness.json'))) if os.path.exists(os.path.join(ROOT, 'data', 'freshness.json')) else None
+    if _nw or _fr:
+        O.append('<section><div class="kicker">Current as of now</div><h2 class="disp">News &amp; Data Check</h2><div class="cols">')
+        if _nw:
+            _seen, _rows = set(), []
+            for a in _nw['alerts']:                       # newest story per player and kind
+                if (a['pid'], a['kind']) not in _seen:
+                    _seen.add((a['pid'], a['kind'])); _rows.append(a)
+            O.append('<div class="card"><h3>News radar · last 72 hours</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
+                     'ESPN stories and official transactions on your players and your trade-plan targets: injury, suspension, contract, role and roster moves. '
+                     f'{_nw["stories_in_log"]} stories in the 21-day log, refreshed {esc(_nw["generated"])}.</div>')
+            for a in _rows[:10]:
+                O.append(f'<div class="prow"><span class="pos">{esc({"injury": "INJ", "suspension": "SUS", "contract": "CTR", "role": "ROL", "transaction": "TXN"}.get(a["kind"], ""))}</span><span><b>{esc(a["player"])}</b>'
+                         f'{"" if a["mine"] else " <small style=" + chr(34) + "color:var(--muted)" + chr(34) + ">(@" + esc(a["owner"]) + ")</small>"} '
+                         f'<a href="{esc(a["url"])}" target="_blank" rel="noopener" style="color:inherit">{esc(a["headline"])}</a></span>'
+                         f'<span class="age"></span><span class="vv num">{a["hours_ago"]:.0f}h</span></div>')
+            if not _rows:
+                O.append('<div style="font-size:12px;color:var(--muted)">No injury, suspension, contract or role news on your players or targets in 72 hours.</div>')
+            O.append('</div>')
+        if _fr:
+            _bad = [c for c in _fr['checks'] if c['status'] != 'ok']
+            O.append(f'<div class="card"><h3>Data check · {len(_fr["checks"]) - len(_bad)} of {len(_fr["checks"])} current</h3>'
+                     '<div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">Each source checked for what it contains, not just when it was '
+                     f'downloaded. Checked {esc(_fr["generated"])}.</div>')
+            for c in sorted(_fr['checks'], key=lambda c: c['status'] == 'ok'):
+                O.append(f'<div class="prow"><span class="pos">{"OK" if c["status"] == "ok" else "⚠"}</span><span>{esc(c["source"])} '
+                         f'<small style="color:var(--muted)">{esc(c["detail"])}{(" · fix: " + esc(c["fix"])) if c["status"] != "ok" and c.get("fix") else ""}'
+                         '</small></span><span class="age"></span><span class="vv num"></span></div>')
             O.append('</div>')
         O.append('</div></section>')
     if wv or io or vt:
@@ -876,7 +915,51 @@ def build():
                          f'<span class="ghost" style="width:{100 * (x["market"] - x["adjusted"]) / mx:.0f}%"></span></span>'
                          f'<span class="v num">−{round((1 - x["mult"]) * 100)}%</span>'
                          f'<span class="sig">{esc(x["signal"])}</span></div>')
-            O.append('</div></section>')
+            O.append('</div>')
+            cuts_ = [x for x in cc.get('cut_risk', []) if x.get('owner')][:10]
+            if cuts_:
+                O.append(f'<div class="card" style="margin-top:16px"><h3>Cut risk next offseason</h3>'
+                         f'<div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">Signed past this season, but cheap to release: '
+                         f'what a cut before June 1 saves the team vs leaves as dead money ({esc(cc.get("cut_risk_note", ""))}). '
+                         'Veterans here can lose their job and their value together.</div>')
+                for x in cuts_:
+                    O.append(f'<div class="prow"><span class="pos">{esc(x["pos"])}</span><span><b>{esc(x["name"])}</b> '
+                             f'<small style="color:var(--muted)">{esc(x["age"])} · {esc(x["team"])} · @{esc(x["owner"])} · {esc(x["signal"])}</small></span>'
+                             f'<span class="age"></span><span class="vv num">{x["market"]:,}</span></div>')
+                O.append('</div>')
+            O.append('</section>')
+
+    # ---- under the hood: tracking data (ops/ngs.py) — only metrics that passed the held-out test move anything ----
+    _ng = json.load(open(os.path.join(ROOT, 'data', 'ngs.json'))) if os.path.exists(os.path.join(ROOT, 'data', 'ngs.json')) else None
+    if _ng and _ng.get('players'):
+        _kept = [(k, 'rest of season', e) for k, e in _ng['evaluation'].items() if e['use']] + \
+                [(k, 'next season', e) for k, e in _ng.get('evaluation_next_season', {}).items() if e['use']]
+        _lab = {'air_yards_share': 'share of team air yards', 'yac_over_exp': 'yards after catch over expected',
+                'separation': 'separation', 'ryoe_per_att': 'rush yards over expected', 'cpoe': 'completion % over expected',
+                'time_to_throw': 'time to throw'}
+        O.append('<section><div class="kicker">Under the hood</div><h2 class="disp">Tracking Data: Better or Worse Than the Box Score</h2>'
+                 '<p class="lede">The NFL\'s player-tracking numbers, tested before trusted: each was checked on 2019-2025 seasons it had '
+                 'never seen, and only these beat points alone — '
+                 + '; '.join(f'{esc(_lab.get(k.split("|")[0], k))} for {k.split("|")[1]}s ({h}, {e["gain_pct"]:+.1f}%)' for k, h, e in _kept)
+                 + '. Separation, rushing yards over expected and completion % over expected did not. Lift = points a game the tracking '
+                 f'data adds to (or takes from) the box-score estimate; ±{_ng["lift_threshold"]:.0f} flags a buy-low or sell-high.</p><div class="cols">')
+        _rows = list(_ng['players'].values())
+        _best = lambda r: r['lift'] if abs(r['lift']) >= abs(r['lift_next']) else r['lift_next']
+        _when = lambda r: 'rest of season' if abs(r['lift']) >= abs(r['lift_next']) else 'next season'
+        for title, sel in (('Your players', [r for r in _rows if r['owner'] == MY and _best(r)]),
+                           ('Buy-low watch (other teams)', [r for r in _rows if r['owner'] != MY and r['watch'] == 'buy-low']),
+                           ('Sell-high watch (other teams)', [r for r in _rows if r['owner'] != MY and r['watch'] == 'sell-high'])):
+            sel = sorted(sel, key=lambda r: -abs(_best(r)))[:8]
+            if not sel:
+                continue
+            O.append(f'<div class="card"><h3>{esc(title)}</h3>')
+            for r in sel:
+                O.append(f'<div class="prow"><span class="pos">{esc(r["pos"])}</span><span><b>{esc(r["name"])}</b> '
+                         f'<small style="color:var(--muted)">{"" if r["owner"] == MY else "@" + esc(r["owner"]) + " · "}{r["ppg"]:.1f} pts/game · '
+                         f'{_when(r)}{" · " + r["watch"] if r["watch"] else ""}</small></span><span class="age"></span>'
+                         f'<span class="vv num">{_best(r):+.1f}</span></div>')
+            O.append('</div>')
+        O.append('</div></section>')
 
     # ---- age vs price: WR production vs the price paid for it ----
     # Two curves side by side is the whole argument: production stays flat with

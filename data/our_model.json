@@ -28,5 +28,48 @@
    4.979,
    4.993
   ]
+ },
+ "blend": {
+  "QB": 0.5,
+  "RB": 0.1,
+  "WR": 0.3,
+  "TE": 1.0
+ },
+ "blend_test": {
+  "weeks": "11-17 (weights chosen on 4-10)",
+  "by_pos": {
+   "QB": {
+    "w_ours": 0.5,
+    "n_test": 213,
+    "ours": 6.567,
+    "sleeper": 7.359,
+    "blend": 6.53
+   },
+   "RB": {
+    "w_ours": 0.1,
+    "n_test": 371,
+    "ours": 5.691,
+    "sleeper": 5.64,
+    "blend": 5.622
+   },
+   "WR": {
+    "w_ours": 0.3,
+    "n_test": 535,
+    "ours": 5.532,
+    "sleeper": 5.539,
+    "blend": 5.489
+   },
+   "TE": {
+    "w_ours": 0.1,
+    "n_test": 230,
+    "ours": 4.618,
+    "sleeper": 4.748,
+    "blend": 4.725,
+    "kept": "ours only"
+   }
+  },
+  "ours": 5.584,
+  "sleeper": 5.719,
+  "blend": 5.541
  }
 }

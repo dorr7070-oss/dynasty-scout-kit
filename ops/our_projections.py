@@ -50,6 +50,12 @@ def week_rows(season):
     p = os.path.join(HIST, f'week_{season}.csv')
     if not os.path.exists(p):
         p = os.path.join(CACHE, f'stats_player_week_{season}.csv')
+    if not os.path.exists(p):                  # a new install has no history yet: fetch that season once
+        from usage import grab
+        p = grab(f'https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{season}.csv',
+                 p, max_age=10**9)
+        if not p:
+            return []
     out = []
     for r in csv.DictReader(open(p, encoding='utf-8')):
         if r['season_type'] == 'REG' and r['position'] in POS:
@@ -161,6 +167,7 @@ def evaluate(season, prm, rows, hist, pri, rates, ctx, filt=None):
             continue
         ratio, mult = ctx.get((r['gid'], r['team']), (1.0, {}))
         p = predict(prm, r['pos'], n, form, opp, pri.get(r['pid']), rates) * ratio ** prm[4] * mult.get(r['pos'], 1.0)
+        r['pred'] = p
         errs.append((abs(p - r['pts']), r))
     return errs
 
@@ -196,7 +203,33 @@ def fit():
     res = {'params': dict(zip(('H', 'K', 'wF', 'wX', 'BETA'), best)), 'test_season': 2025, 'weeks': '4-17',
            'n': len(ours), 'ours_mae': round(statistics.mean(e for e, _ in ours), 3), 'sleeper_mae': round(statistics.mean(slp), 3),
            'by_pos_ours_vs_sleeper': by_pos}
+    # blend with Sleeper (added 2026-10-04): the two models miss in different places. Weight per position chosen on
+    # 2025 weeks 4-10, judged ONLY on weeks 11-17 (never used to choose it).
+    slv = lambda r: sl[(gs[r['pid']], r['week'])]
+    blend, bt = {}, {}
+    for pos in POS:
+        tr_ = [r for _, r in ours if r['pos'] == pos and r['week'] <= 10]
+        te_ = [r for _, r in ours if r['pos'] == pos and r['week'] > 10]
+        if len(tr_) < 50 or len(te_) < 50:
+            continue
+        mae = lambda rs, w: statistics.mean(abs(w * r['pred'] + (1 - w) * slv(r) - r['pts']) for r in rs)
+        w = min((i / 10 for i in range(11)), key=lambda w: mae(tr_, w))
+        blend[pos] = w
+        bt[pos] = {'w_ours': w, 'n_test': len(te_), 'ours': round(mae(te_, 1), 3), 'sleeper': round(mae(te_, 0), 3), 'blend': round(mae(te_, w), 3)}
+    for pos, b in bt.items():   # a blend that lost on the held-out weeks is not used: keep the better single model
+        if b['blend'] > min(b['ours'], b['sleeper']):
+            blend[pos] = 1.0 if b['ours'] <= b['sleeper'] else 0.0
+            b['kept'] = 'ours only' if blend[pos] == 1.0 else 'sleeper only'
+    allte = [r for _, r in ours if r['week'] > 10 and r['pos'] in blend]
+
+    res['blend'] = blend
+    res['blend_test'] = {'weeks': '11-17 (weights chosen on 4-10)', 'by_pos': bt,
+                         'ours': round(statistics.mean(abs(r['pred'] - r['pts']) for r in allte), 3),
+                         'sleeper': round(statistics.mean(abs(slv(r) - r['pts']) for r in allte), 3),
+                         'blend': round(statistics.mean(abs(blend[r['pos']] * r['pred'] + (1 - blend[r['pos']]) * slv(r) - r['pts']) for r in allte), 3)}
     json.dump(res, open(MODEL, 'w'), indent=1)
+    bt_ = res['blend_test']
+    print(f"blend test (2025 weeks 11-17, weights from 4-10): ours {bt_['ours']} · sleeper {bt_['sleeper']} · BLEND {bt_['blend']}  weights {blend}")
     print(f"our model: params {res['params']} (fitted on 2024)")
     print(f"2025 test, weeks 4-17, {res['n']:,} player-weeks Sleeper projected 5+: OURS MAE {res['ours_mae']} vs SLEEPER {res['sleeper_mae']}")
     for pos, (o, s) in by_pos.items():
@@ -293,7 +326,25 @@ def live():
             proj[sid] = {'name': p.get('full_name'), 'pos': pos, 'team': p.get('team'), 'base': round(base, 2),
                          'n': n, 'weekly': wk}
 
-    # season simulation with OUR projections (same engine as lottery.py)
+    # BLEND with Sleeper where the held-out test said it helps (m['blend'] = weight on ours, per position; 1.0 = ours
+    # only). Injury zeros stay zero: Sleeper's number for a player we know is out is not evidence he plays.
+    bw = m.get('blend') or {}
+    slw = {}
+    for w in weeks:
+        try:
+            slw[w] = W.sleeper_week(season, w)
+        except Exception:
+            slw[w] = {}
+    for sid, x in proj.items():
+        x['weekly_ours'] = dict(x['weekly'])
+        x['weekly_sleeper'] = {w: round(slw[w][sid], 2) for w in weeks if sid in slw.get(w, {})}
+        b = bw.get(x['pos'], 1.0)
+        for w in weeks:
+            o, sv = x['weekly'].get(w, 0.0), x['weekly_sleeper'].get(w)
+            if o > 0 and sv is not None:
+                x['weekly'][w] = round(b * o + (1 - b) * sv, 2)
+
+    # season simulation with the BLENDED projections (same engine as lottery.py)
     from project import lineup_points
     PW = {sid: {int(w): v for w, v in x['weekly'].items()} for sid, x in proj.items()}
     pos_of = lambda s: P.get(s, {}).get('position')
@@ -303,6 +354,8 @@ def live():
     W0 = {rr['roster_id']: rr['settings']['wins'] for rr in R}
     F0 = {rr['roster_id']: numf(rr, 'fpts') for rr in R}
     pts = {rid: {w: lineup_points(act[rid], w, PW, pos_of) for w in weeks} for rid in act}
+    from decided import decided
+    locked = decided(weeks[0]) if weeks else {}   # matchups already over in the week in progress (see decided.py)
     random.seed(11)
     N = 6000
     made, wins, place = defaultdict(int), defaultdict(float), defaultdict(float)
@@ -310,6 +363,8 @@ def live():
         Wn, Fp = dict(W0), dict(F0)
         for w in weeks:
             s = {rid: random.gauss(pts[rid][w], 22) for rid in act}
+            if w == weeks[0]:
+                s.update({rid: v for rid, v in locked.items() if rid in s})
             seen = set()
             for rid in act:
                 for g in sched[rid]:

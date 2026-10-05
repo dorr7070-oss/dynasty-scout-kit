@@ -97,7 +97,7 @@ payload = {'fmt': 'superflex' if LF.SUPERFLEX else '1QB', 'rounds': list(PK.ROUN
            'gen': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), 'season': latest}
 
 CSS = open(os.path.join(ROOT, 'ops', 'dashboard.css')).read()
-PAGE = r'''<title>__LEAGUE__ Asset Board</title>
+PAGE = r'''<meta charset="utf-8"><title>__LEAGUE__ Asset Board</title>
 <style>
 ''' + CSS + r'''
 /* layout: summary table first, then three views (my picks / league pick grid / rosters) behind tabs */

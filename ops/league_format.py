@@ -77,6 +77,14 @@ KTC_FORMAT = 2 if SUPERFLEX else 1
 DRAFT_ORDER = CFG.get('draft_order') or PROFILE.get('draft_order') or {'rule': 'reverse_record'}
 
 
+def stamp(dt=None):
+    """'Mon Oct 5, 9:14 PM MST' in this computer's local time. strftime's %-d / %-I padding flags are
+    Mac/Linux only: Windows Python raises ValueError on them, which stopped the dashboards there."""
+    import datetime as _dt
+    d = (dt or _dt.datetime.now()).astimezone()
+    return f"{d:%a %b} {d.day}, {d.hour % 12 or 12}:{d:%M %p} {d.tzname() or ''}".strip()
+
+
 def ktc_value(p):
     """KTC player/pick object -> value on this league's format (superflex or 1QB)."""
     key = 'superflexValues' if SUPERFLEX else 'oneQBValues'

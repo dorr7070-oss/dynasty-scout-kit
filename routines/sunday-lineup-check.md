@@ -8,7 +8,8 @@ Paste as a scheduled task / routine prompt, with this folder as its working dire
 Game-day start/sit check on my dynasty roster (league details in `LEAGUE.md`). Read `CLAUDE.md` first.
 My username is in `config.json`.
 
-1. Read my live lineup: my league's team page in the browser if available (Sleeper, ESPN or Yahoo),
+1. Refresh first: `python update.py` (Windows) or `./update.sh` (Mac), then read `data/weekly.json` (best lineup
+   vs the set one, with reasons) and the alerts in `data/news.json`. Then read my live lineup: my league's team page in the browser if available (Sleeper, ESPN or Yahoo),
    otherwise the latest pulled rosters plus `https://api.sleeper.com/projections/nfl/<season>/<week>`. Get each player's
    kickoff time, projection and injury tag.
 2. Search the news for every Questionable/Doubtful/Out starter and notable teammates.

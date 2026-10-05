@@ -4,7 +4,7 @@ You are the analyst for one team in a dynasty fantasy football league on **Sleep
 This folder is a complete analytics framework: it reads the league's own settings, pulls its rosters
 and history, values every player and pick on the league's format (1QB or superflex, PPR or not),
 ranks teams, grades trades, simulates the season, models the draft lottery, tracks college
-prospects, and builds two dashboards. Your job is to run it, keep it current, and help the owner
+prospects, and builds one tabbed dashboard (`dashboards/hub.html`). Your job is to run it, keep it current, and help the owner
 make decisions with it. Read this file fully before doing anything.
 
 Runs on **Windows, Mac or Linux** with Python 3 + `curl` (built into Windows 10/11 and macOS).
@@ -20,7 +20,7 @@ clone of the shared framework repo. `update.py` pulls the latest framework itsel
 (fast-forward only) and restarts on the new version; when the owner asks to "update the kit" or "get
 the latest version", run `git pull --ff-only` here and report what changed (`git log --oneline -5`).
 Never commit or push from an owner's clone. Personal files are git-ignored and never overwritten:
-`config.json`, `data/` (except the four shipped study results), `dashboards/`, `profiles/` and the
+`config.json`, `data/` (except the shipped study results), `dashboards/`, `profiles/` and the
 report files. If a pull is refused because a tracked file was edited locally, show the owner the
 edit, then `git stash` it (or keep it) only with their OK.
 
@@ -29,7 +29,7 @@ league_profile.py all do it). Edit `config.json`, never the template.
 
 **Moving from the old zip to the GitHub version:** clone the repo link the owner was sent into a new
 folder, copy their `config.json` (and `profiles/` if they wrote notes) from the old folder, run
-`update.py`, then confirm both dashboards show their team. The old folder can then be deleted.
+`update.py`, then confirm the dashboard shows their team. The old folder can then be deleted.
 
 ---
 
@@ -59,9 +59,11 @@ what needs them (installing the app, clicking Allow, creating their own accounts
    - Ask which team is theirs; save their platform display name as `my_username` (check it appears in
      `data/<season>/users.json` after the first pull) and their first name as `my_name`.
 4. **Phase 4:** run the pipeline (`python update.py` / `./update.sh`). If you have an Artifact/publish tool,
-   publish `dashboards/league.html` and `dashboards/assets.html` (private by default; the owner turns on
-   sharing with the page's Share button). Otherwise open them in the browser (`start dashboards\league.html`
-   on Windows, `open dashboards/league.html` on Mac). Then do a full league review and run the strategy
+   publish **`dashboards/hub.html`** with `capabilities: {sample: {}}` (the Ask tab needs it; each question
+   uses the viewer's own Claude usage). It is private by default; the owner turns on sharing with the page's
+   Share button. Save the URL in `config.json` → `dashboard_links` → `"Dashboard"` and republish to that same
+   URL every time, so the owner's bookmark keeps working. Without a publish tool, open it in the browser
+   (`start dashboards\hub.html` on Windows, `open dashboards/hub.html` on Mac). Then do a full league review and run the strategy
    session in **`STRATEGY.md`** with the owner (window, core, king's-ransom rule, holes, picks, checkpoints),
    which writes their **CURRENT STRATEGY**. Whenever the owner says "build my strategy" (or anything like
    it, e.g. "help me plan my team"), follow STRATEGY.md.
@@ -110,7 +112,11 @@ the commissioner changes settings. What each setting changes is in `docs/LEAGUE_
 | Draft board | `ops/draft.py` | `DRAFT_BOARD.md` |
 | Trade grades | `ops/trade_grades.py` | `TRADE_GRADES.md` — every trade graded in hindsight |
 | Manager skill | `ops/manager_skill.py` | `MANAGER_SKILL.md` — lineup efficiency, waiver/draft hit rates |
-| Dashboards | `ops/league_dashboard.py`, `ops/assets_dashboard.py` | the two HTML pages |
+| Source pages | `ops/league_dashboard.py`, `ops/assets_dashboard.py`, `ops/analysis_dashboard.py` | league, asset board, game day and analysis pages (inputs to the hub) |
+| Analyst | `ops/analyst.py` (+ `analyst.js`, `analyst.css`) | Player Lookup, Trade Analyzer (re-runs the season sim in the page), Ask the Analyst |
+| **The dashboard** | `ops/hub_dashboard.py` | **`dashboards/hub.html`** — one page, tabs This Week · Trades · Season · Players · League · Picks · Ask; opens on Game Day on Sun/Mon. This is the page to publish and show |
+| News, trending, freshness | `ops/news.py`, `ops/trending.py`, `ops/freshness.py` | ESPN news per rostered player (injury, suspension, contract, role) with 72-hour alerts; Sleeper adds/drops; a contents-based check of every source |
+| Cap + missing starters + tracking | `ops/cap.py`, `ops/absence_study.py`, `ops/ngs.py` | cut risk from OverTheCap dead money; own offensive-line absences; Next Gen Stats kept only where they beat the model on held-out seasons |
 
 Other tools: `python3 ops/trade_sim.py "Player Name>username" ...` gives every team's playoff
 odds after hypothetical moves (live rosters). `python3 ops/report.py <username>` focuses any owner.
@@ -140,7 +146,7 @@ pick is valued over its lottery slot odds. The market (especially KTC) prices pi
 ## Workflows
 
 **"Update everything"** — check the league for new trades/claims/offers, run the pipeline (`python update.py` on Windows, `./update.sh` on Mac), refresh
-any stale dashboard cards, republish both dashboards, report what changed in a few lines.
+any stale dashboard cards, republish `dashboards/hub.html` to its saved URL, report what changed in a few lines.
 
 **"Run a review"** — read-only: live state, pending offers, injuries on starters (news search),
 playoff odds, standings, power rankings, trade grades, notable league moves. Report; change nothing.
@@ -190,6 +196,15 @@ calculator gives a "value adjustment" bonus to the side receiving the single bes
 
 - Verify before asserting: prices, injuries, records and counts are looked up, not recalled.
   Say "not verified" when something wasn't checked.
+- **Always use the freshest data.** Run `python3 update.py` before any review or recommendation, then check
+  `data/freshness.json` (every source is checked for what it contains, not just when it was downloaded) and the news
+  alerts in `data/news.json` (injuries, suspensions served and pending, contract news, role changes). Anything stale
+  gets refreshed or called out as stale. A same-day report that changes a start/sit goes into
+  `data/news_overrides.json` with that week's number; it expires after that week. Say when each fact was read.
+- **Trade evaluations are neutral:** grade every trade on market value (`mean_market`), the same number for both
+  sides. The contract-adjusted `mean` is a forward-looking view for the owner's own decisions, not for grading.
+- **"Nothing happened" is not "it can't be done."** If a command or page gives no result, check that the action
+  actually ran (a different element, a different path) before telling the owner something is impossible.
 - Nothing leaves this machine (trades, messages, posts) without the owner's explicit OK.
 - Keep API keys out of this folder.
 - Facts here are dated; when the league or a source changes, update this file.

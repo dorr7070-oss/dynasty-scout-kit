@@ -59,12 +59,16 @@ def main(moves):
     PF0 = {r['roster_id']: r['settings'].get('fpts', 0) + r['settings'].get('fpts_decimal', 0) / 100 for r in rosters}
     pts = {r: {w: lineup_points(act[r], w, proj, pos_of) for w in weeks} for r in act}
     det = {r: sum(1 for g in sched[r] if g['wk'] in weeks and pts[r][g['wk']] > pts[g['opp']][g['wk']]) for r in act}
+    from decided import decided
+    locked = decided(weeks[0]) if weeks else {}
     random.seed(7)
     made = {r: 0 for r in act}
     for _ in range(N):
         W, PF = dict(W0), dict(PF0)
         for w in weeks:
             s = {r: random.gauss(pts[r][w], SD) for r in act}
+            if w == weeks[0]:
+                s.update({r: v for r, v in locked.items() if r in s})
             seen = set()
             for r in act:
                 for g in sched[r]:

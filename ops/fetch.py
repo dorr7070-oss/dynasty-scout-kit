@@ -90,7 +90,11 @@ def main():
         else:
             in_season = (get(f'{API}/state/nfl') or {}).get('season_type') == 'regular'
         if in_season:
-            max_age = 86400
+            # injury and roster status move by the hour on game days (Thursday, Sunday, Monday US Eastern:
+            # practice reports, inactives ~90 min before kickoff); 6 hours otherwise (owner's rule 2026-10-04:
+            # always work off the most current data)
+            et_day = time.strftime('%a', time.gmtime(time.time() - 4 * 3600))
+            max_age = 3600 if et_day in ('Thu', 'Sun', 'Mon') else 6 * 3600
     except Exception:
         pass
     if not os.path.exists(players_path) or time.time() - os.path.getmtime(players_path) > max_age:

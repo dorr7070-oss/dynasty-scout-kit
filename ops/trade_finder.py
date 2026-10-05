@@ -69,9 +69,16 @@ def main():
         return [p for p in (r.get('players') or []) if p not in (r.get('taxi') or []) and p not in (r.get('reserve') or [])]
     roster = {r['roster_id']: r for r in rosters}
 
+    from decided import decided, result
+    LOCK = decided(wk_now)               # games already over this week count as played, whatever the trade
+
     def exp_wins(rid, players_):
         sched = [g for g in proj['rosters'][str(rid)]['schedule'] if g['wk'] >= wk_now]
-        return sum(phi((lineup_points(players_, g['wk'], PW, pos_of) - g['opp_pts']) / SD_MARGIN) for g in sched)
+        out = 0.0
+        for g in sched:
+            r = result(LOCK, rid, g['opp'], g['wk'], wk_now)
+            out += r if r is not None else phi((lineup_points(players_, g['wk'], PW, pos_of) - g['opp_pts']) / SD_MARGIN)
+        return out
 
     base = {rid: exp_wins(rid, [p for p in active(r) if pos_of(p) in LF.POS]) for rid, r in roster.items()}
 

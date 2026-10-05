@@ -20,11 +20,11 @@ def ensure_config(root):
 
 
 STEPS = [  # (script, optional)
-    ('league_profile.py', False), ('fetch.py', False), ('values.py', False), ('usage.py', False), ('usage_adv.py', True), ('context.py', False), ('contract_study.py', True), ('contracts.py', True), ('value_trends.py', True),
-    ('project.py', False), ('injury_study.py', True), ('injuries.py', True), ('weekly_study.py', True), ('weekly.py', True), ('waivers.py', True), ('lottery.py', False), ('lottery_tracker.py', True), ('trade_finder.py', True), ('our_projections.py', True), ('prospects.py', True), ('cfbd.py', True),
+    ('freshness.py --fix', True), ('league_profile.py', False), ('fetch.py', False), ('news.py', True), ('trending.py', True), ('values.py', False), ('usage.py', False), ('usage_adv.py', True), ('context.py', False), ('contract_study.py', True), ('cap.py', True), ('contracts.py', True), ('value_trends.py', True),
+    ('project.py', False), ('injury_study.py', True), ('injuries.py', True), ('weekly_study.py', True), ('absence_study.py', True), ('weekly.py', True), ('waivers.py', True), ('lottery.py', False), ('lottery_tracker.py', True), ('trade_finder.py', True), ('our_projections.py', True), ('ngs.py', True), ('prospects.py', True), ('cfbd.py', True),
     ('profiles.py', False), ('report.py', False), ('advise.py', False), ('draft.py', False),
     ('trade_grades.py', False), ('manager_skill.py', False),
-    ('league_dashboard.py', False), ('assets_dashboard.py', False), ('insights.py', True), ('analysis_dashboard.py', True),
+    ('freshness.py', True), ('league_dashboard.py', False), ('assets_dashboard.py', False), ('insights.py', True), ('analysis_dashboard.py', True), ('analyst.py', True), ('hub_dashboard.py', True),
 ]
 
 
@@ -57,13 +57,14 @@ def main():
     env = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
     t0 = time.time()
     for script, optional in STEPS:
-        r = subprocess.run([sys.executable, os.path.join(ROOT, 'ops', script)], cwd=ROOT, env=env)
+        name, *args = script.split()
+        r = subprocess.run([sys.executable, os.path.join(ROOT, 'ops', name), *args], cwd=ROOT, env=env)
         if r.returncode != 0:
             if optional:
                 print(f'!! {script} failed (optional step) — continuing')
                 continue
             sys.exit(f'!! {script} failed with exit code {r.returncode} — fix this before relying on the outputs')
-    print(f'Done in {time.time() - t0:.0f}s. Dashboards: dashboards/league.html, dashboards/assets.html')
+    print(f'Done in {time.time() - t0:.0f}s. Dashboard: dashboards/hub.html')
 
 
 if __name__ == '__main__':

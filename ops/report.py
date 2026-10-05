@@ -3,7 +3,7 @@
 
 Run after fetch.py / values.py / profiles.py:
     python3 ops/report.py            # league table + my team (config my_username)
-    python3 ops/report.py dini59     # focus any owner instead
+    python3 ops/report.py someowner  # focus any owner instead
 """
 import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

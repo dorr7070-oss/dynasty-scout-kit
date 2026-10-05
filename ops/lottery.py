@@ -150,6 +150,8 @@ def main():
     avg = {r: (sum(pts[r].values()) / len(weeks)) if weeks else 120 for r in act}
     by_maxpf = RULE.get('rule') in ('max_pf_lottery', 'reverse_max_pf')
 
+    from decided import decided
+    locked = decided(weeks[0]) if weeks else {}   # matchups already over in the week in progress: real scores, not draws
     random.seed(11)
     cnt = {r: [0.0] * T for r in act}
     made = {r: 0 for r in act}
@@ -157,6 +159,8 @@ def main():
         W, F, M = dict(W0), dict(F0), dict(M0)
         for w in weeks:
             s = {r: random.gauss(pts[r][w], SD) for r in act}
+            if w == weeks[0]:
+                s.update({r: v for r, v in locked.items() if r in s})
             seen = set()
             for r in act:
                 for g in sched[r]:
