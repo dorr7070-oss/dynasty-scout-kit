@@ -19,7 +19,10 @@ Runs on **Windows, Mac or Linux** with Python 3 + `curl` (built into Windows 10/
 clone of the shared framework repo. `update.py` pulls the latest framework itself before every run
 (fast-forward only) and restarts on the new version; when the owner asks to "update the kit" or "get
 the latest version", run `git pull --ff-only` here and report what changed (`git log --oneline -5`).
-Never commit or push from an owner's clone. Personal files are git-ignored and never overwritten:
+Never commit or push from an owner's clone. A folder that came from a zip is linked to the repo
+automatically on its first `update.py` run (Git must be installed), and updates itself after that. Before
+any update replaces framework files, `update.py` copies the owner's cards into `my_cards.py` and keeps the
+old files in `backup/<date>/`; if `my_cards.py` looks wrong after an update, rebuild it from that backup. Personal files are git-ignored and never overwritten:
 `config.json`, `data/` (except the shipped study results), `dashboards/`, `profiles/` and the
 report files. If a pull is refused because a tracked file was edited locally, show the owner the
 edit, then `git stash` it (or keep it) only with their OK.
@@ -27,9 +30,11 @@ edit, then `git stash` it (or keep it) only with their OK.
 **`config.json`** is created from `config.template.json` on the first run (doctor.py, update.py and
 league_profile.py all do it). Edit `config.json`, never the template.
 
-**Moving from the old zip to the GitHub version:** clone the repo link the owner was sent into a new
-folder, copy their `config.json` (and `profiles/` if they wrote notes) from the old folder, run
-`update.py`, then confirm the dashboard shows their team. The old folder can then be deleted.
+**When the owner says "update Dynasty Scout from <link>" (or anything like it):** if this folder has a
+`.git` directory, run `update.py`, which pulls the latest version. If it has none (an old zip copy), run
+`update.py` too: it links the folder to the repo and updates it in place, keeping config.json, data,
+profiles and cards. If that fails (no Git yet), install Git (Windows: `winget install -e --id Git.Git`, then
+reopen the app) and run it again. Confirm the dashboard opens with their team name, then publish it.
 
 ---
 
@@ -136,9 +141,12 @@ pick is valued over its lottery slot odds. The market (especially KTC) prices pi
   (who wants what, who said no, prices floated) goes in that owner's profile immediately.
 - **Your own profile** holds a section titled **`CURRENT STRATEGY`**: the plan of record. Judge
   every trade against it; if a trade breaks it, say so and offer to revisit the plan.
-- **`ops/league_dashboard.py` → `OPEN_DECISIONS`, `MY_ACTIONS`, `OWNER_READS`** — the hand-written
-  dashboard cards. Keep them current and short; rewrite stale ones rather than piling up.
-- **`ops/picks.py` → `TRAJ_2028`** — your read on which owners will rise or fall by 2028.
+- **`my_cards.py`** (folder root, git-ignored) — the hand-written dashboard cards (`OPEN_DECISIONS_DATE`,
+  `OPEN_DECISIONS`, `MY_ACTIONS`, `OWNER_READS`, `WINDOW_OVERRIDE`) and `TRAJ_2028` (your read on which owners
+  rise or fall by 2028). Create it on first use by copying the starter block from `ops/league_dashboard.py`
+  (between `hand-maintained reads` and `KIND_LABEL`). Keep the cards current and short; set
+  `OPEN_DECISIONS_DATE` to today whenever you rewrite them. **Never edit `ops/league_dashboard.py` or
+  `ops/picks.py` for this:** they are framework files, and an edited copy blocks every future update.
 - **`research/DRAFT_PLAN.md`** (create it) — which future class fills which roster hole.
 
 ---

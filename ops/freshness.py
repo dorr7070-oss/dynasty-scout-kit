@@ -143,8 +143,10 @@ def main():
         age_d = (NOW - time.mktime(time.strptime(upd, '%Y-%m-%d'))) / 86400 if re.match(r'\d{4}-\d\d-\d\d$', upd) else 99
         add('Trade plan (data/trade_plan.json)', 'ok' if age_d <= 7 else 'stale', f'last re-checked {upd or "never"}',
             're-run the trade review; rosters, injuries and prices move weekly')
-    src = open(os.path.join(ROOT, 'ops', 'league_dashboard.py')).read()
-    m = re.search(r"OPEN_DECISIONS_DATE = '(\d{4}-\d\d-\d\d)'", src)
+    mc = os.path.join(ROOT, 'my_cards.py')       # an owner's own cards override the ones in the code
+    src = open(mc, encoding='utf-8').read() if os.path.exists(mc) else ''
+    m = re.search(r"OPEN_DECISIONS_DATE = '(\d{4}-\d\d-\d\d)'", src) or re.search(
+        r"OPEN_DECISIONS_DATE = '(\d{4}-\d\d-\d\d)'", open(os.path.join(ROOT, 'ops', 'league_dashboard.py')).read())
     if m:
         age_d = (NOW - time.mktime(time.strptime(m.group(1), '%Y-%m-%d'))) / 86400
         add('"On the clock" list (hand-written)', 'ok' if age_d <= 3 else 'stale', f'written {m.group(1)}',

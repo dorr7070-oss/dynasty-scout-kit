@@ -1,0 +1,65 @@
+DYNASTY SCOUT: START HERE
+=========================
+
+This folder is a fantasy football analyst that runs inside the Claude app on your computer.
+You don't need to know anything about AI or coding. Claude does the setup. You only click
+"Allow", type a password when a website asks for one, and answer a few questions about your league.
+
+Time: about 20 minutes, most of it waiting.
+You need: a Windows 10/11 PC or a Mac (not a phone), and a card for a Claude subscription.
+
+
+STEP 1. MAKE A CLAUDE ACCOUNT (skip if you already have Claude Pro or higher)
+  1. Go to claude.ai in your web browser.
+  2. Click "Sign up". Use your email or "Continue with Google".
+  3. Choose the Pro plan (about $20 a month). The free plan can't run this.
+     Already have an account? Check your plan: click your name, then Settings, then Billing.
+
+STEP 2. INSTALL THE CLAUDE APP
+  1. Go to claude.com/download and download the app for your computer.
+  2. Install it like any other program:
+     - PC: open the downloaded file and follow the prompts.
+     - Mac: open the downloaded file and drag Claude into your Applications folder.
+  3. Open Claude and sign in with the same account from Step 1.
+
+STEP 3. PUT THIS FOLDER SOMEWHERE SAFE
+  Move this whole folder into your Documents folder (not Downloads, which gets cleaned out).
+  - PC: if you're looking inside the zip, right-click the zip file, choose "Extract All",
+    pick Documents, and click Extract.
+  - Mac: double-click the zip, then drag the folder that appears into Documents.
+
+STEP 4. OPEN THIS FOLDER IN CLAUDE
+  1. In the Claude app, click "Code" (at the top or in the left sidebar).
+  2. Click "Open folder" (or "Select folder") and choose this folder in Documents.
+     Its name starts with "dynasty-scout-kit".
+  3. In the message box, type:   Set this up for my team
+     and press Enter.
+
+STEP 5. ANSWER AND APPROVE
+  Claude now does the work. Before it runs anything, it shows you what it wants to do and asks
+  "Allow?". Click Allow for anything inside this folder. If it wants to install something
+  (on a PC it installs Python and Git), click Allow, and if Windows asks "Do you want to allow
+  this app to make changes?", click Yes. Claude tells you if it needs you to restart the app.
+
+  It will ask you:
+  - Your league's web address. Open your league in your browser and copy the address bar.
+  - Which team is yours.
+  - How your league's rookie draft order is decided (worst record first, a lottery, etc.).
+
+  ESPN private leagues and Yahoo leagues need a one-time login. Claude opens a small window
+  where YOU type it. Never paste a password into the chat.
+
+STEP 6. YOU'RE DONE WHEN...
+  ...your dashboard opens with your team's name at the top. Claude then offers to build your
+  strategy with you.
+
+AFTER THAT
+  Open this folder in Claude's Code tab any time and just ask, for example:
+    update everything
+    should I take this trade?
+    set my lineup
+  Updates install themselves every time you say "update everything". Your settings and notes
+  are never touched.
+
+STUCK?
+  Copy the error into Claude in the same window and press Enter. It usually fixes it right away.

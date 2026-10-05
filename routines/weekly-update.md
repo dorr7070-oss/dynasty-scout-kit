@@ -15,7 +15,7 @@ Weekly refresh of my Dynasty Scout league tracker. Read `CLAUDE.md` first.
    (`research/PROSPECTS.md`).
 3. Append any new intel about other owners (trades they made, needs they revealed) to their
    profiles below the MANUAL SCOUTING NOTES marker, dated. Append only.
-4. Refresh stale cards in `ops/league_dashboard.py` (OPEN_DECISIONS, MY_ACTIONS, OWNER_READS),
+4. Refresh stale cards in `my_cards.py` (OPEN_DECISIONS + its date, MY_ACTIONS, OWNER_READS),
    re-run the pipeline, and republish `dashboards/hub.html` to the URL saved in `config.json` → `dashboard_links`
    if a publish tool exists.
 5. Brief me in under 200 words: what changed, the best 1-3 moves this week against my

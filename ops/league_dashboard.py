@@ -155,8 +155,8 @@ holes = [p for p in POS if my_pos_rank[p] >= LF.HOLE_RANK and LF.CORE[p]]
 
 
 # ============================ hand-maintained reads ==========================
-# YOUR personal layer. Claude keeps these current as you trade and scout; the rest of
-# the dashboard is generated from data. Starter content below is neutral — replace it.
+# Starter cards. YOUR cards go in my_cards.py at the folder root (git-ignored), which overrides
+# these; never edit them here, because an edited framework file blocks updates. See CLAUDE.md.
 OPEN_DECISIONS_DATE = '2000-01-01'   # set to today whenever OPEN_DECISIONS is rewritten; ops/freshness.py flags it at 3+ days
 OPEN_DECISIONS = ("Say \"update everything\", then ask Claude for a full league review · set your CURRENT STRATEGY in "
                   "profiles/<your username>.md · set this week's lineup")
@@ -185,6 +185,13 @@ OWNER_READS = {}
 WINDOW_OVERRIDE = {}
 
 KIND_LABEL = {'buy': 'Buy', 'sell': 'Sell', 'hold': 'Plan', 'done': 'Done'}
+
+# An owner's own cards can live in my_cards.py at the folder root (git-ignored, so an update never
+# touches or blocks on it). Anything it defines (OPEN_DECISIONS_DATE, OPEN_DECISIONS, MY_ACTIONS,
+# OWNER_READS, WINDOW_OVERRIDE) replaces the defaults above.
+_MY_CARDS = os.path.join(ROOT, 'my_cards.py')
+if os.path.exists(_MY_CARDS):
+    exec(compile(open(_MY_CARDS, encoding='utf-8').read(), _MY_CARDS, 'exec'))
 
 WINDOW_CHIP = {  # label -> (text, css class)
     'accumulating': ('Rebuild', 'reb'), 'all-in': ('All-in', 'win'),

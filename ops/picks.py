@@ -48,6 +48,12 @@ FUTURE = [str(int(latest) + 1), str(int(latest) + 2)]     # tradeable future pic
 # username, e.g. {'someowner': +3}. Empty until you have a view.
 TRAJ_2028 = {}
 
+_my_cards = os.path.join(ROOT, 'my_cards.py')   # an owner's own reads (git-ignored) override the default
+if os.path.exists(_my_cards):
+    _ns = {}
+    exec(compile(open(_my_cards, encoding='utf-8').read(), _my_cards, 'exec'), _ns)
+    TRAJ_2028 = _ns.get('TRAJ_2028', TRAJ_2028)
+
 _stale = set(TRAJ_2028) - set(rid2user.values())
 if _stale:
     print(f'  WARNING picks.py: TRAJ_2028 keys match no current owner: '

@@ -56,7 +56,7 @@ your best assets are A and B, your window looks like ___ because ___." Numbers, 
   Never delete an older strategy; mark it superseded with the date.
 - **`config.json`** → `premium` (king's-ransom rules for the core).
 - **`research/DRAFT_PLAN.md`** → which class fills which hole, which picks to keep for it.
-- **`ops/league_dashboard.py`** → `OPEN_DECISIONS` (the 3-5 things on the clock) and `MY_ACTIONS`
+- **`my_cards.py`** (create it as CLAUDE.md describes) → `OPEN_DECISIONS` (the 3-5 things on the clock) and `MY_ACTIONS`
   (one card per live move, plus a "Plan" card that states the strategy in two sentences).
 - Re-run `python update.py` so the Trade Finder and dashboards follow the new rules, then show the owner the
   dashboard and summarize the plan in five lines.
