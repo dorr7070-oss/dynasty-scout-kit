@@ -21,13 +21,13 @@ Windows) after you click **Allow**.
 3. Type: `Set up Dynasty Scout for my team from https://github.com/dorr7070-oss/dynasty-scout-kit`
 
 **Option B: download the zip**
-1. On this page, click the green **Code** button → **Download ZIP**.
+1. Click this link to download it: [dynasty-scout-kit (zip)](https://github.com/dorr7070-oss/dynasty-scout-kit/archive/refs/heads/main.zip)
+   (or, on this page, the green **Code** button → **Download ZIP**). Inside, `START HERE.txt` has these steps too.
 2. Unzip it into **Documents** (Windows: right-click → Extract All; Mac: double-click, then drag the
    folder into Documents). Don't leave it in Downloads.
 3. In the Claude app click **Code** → **Open folder** → pick the folder, and type: `Set this up for my team.`
 
-A zip copy doesn't update itself. To switch to the self-updating version later, say
-`Move me to the GitHub version of Dynasty Scout`.
+A zip copy links itself to this page the first time it runs, and updates itself from then on.
 
 ## What happens next (about 10 minutes the first time)
 
@@ -59,8 +59,8 @@ injuries, market movers), League (power rankings, owner profiles), Picks (every 
 
 - **GitHub copy:** every time you say "update everything", it pulls the newest version first. Your
   settings, data, notes and dashboard are never touched. To update on demand, say "get the latest version".
-- **Zip copy:** download the new zip into a new folder and say `Move my settings over from my old Dynasty Scout folder`,
-  or switch to the GitHub copy (above) once and never do this again.
+- **Older copy that won't update** (for example one from an emailed zip): open it in Claude's Code tab and type
+  `Update Dynasty Scout from https://github.com/dorr7070-oss/dynasty-scout-kit`. Claude links it and keeps your settings.
 
 ## Your privacy
 

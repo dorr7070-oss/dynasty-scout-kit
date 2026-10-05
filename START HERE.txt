@@ -46,8 +46,8 @@ STEP 5. ANSWER AND APPROVE
   - Which team is yours.
   - How your league's rookie draft order is decided (worst record first, a lottery, etc.).
 
-  ESPN private leagues and Yahoo leagues need a one-time login. Claude opens a small window
-  where YOU type it. Never paste a password into the chat.
+  ESPN private leagues and Yahoo leagues need a one-time login. Claude walks you through typing it
+  yourself in a terminal (a plain text window). Never paste a password into the chat.
 
 STEP 6. YOU'RE DONE WHEN...
   ...your dashboard opens with your team's name at the top. Claude then offers to build your
