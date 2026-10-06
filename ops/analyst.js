@@ -11,6 +11,9 @@
   const sgn = (v, d = 1) => (v == null || isNaN(v)) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '±') + fmt(Math.abs(v), d);
   const isPick = x => String(x).startsWith('pick:');
   const RIDS = Object.keys(T);
+  // "my team": fixed in the owner's edition; in the league edition it's whichever team this viewer picked (their browser only)
+  const myRid = () => String((window.DS_PICK && window.DS_PICK()) || D.my_rid || '');
+  const meOwner = () => (T[myRid()] || {}).owner || D.me;
 
   // ---------- search ----------
   function search(q, n = 8) {
@@ -48,7 +51,7 @@
   function card(id) {
     const p = P[id];
     if (!p) return '';
-    const own = p.o ? (p.o === D.me ? 'your team' : '@' + esc(p.o)) : 'free agent';
+    const own = p.o ? (p.o === meOwner() ? 'your team' : '@' + esc(p.o)) : 'free agent';
     const u = p.use || {};
     const ws = WEEKS.slice(0, 6);
     const row = (lab, src) => `<tr><td>${lab}</td>${ws.map(w => `<td>${src && src[w] != null ? fmt(src[w], 1) : '—'}</td>`).join('')}</tr>`;
@@ -193,8 +196,9 @@
       };
       sel.addEventListener('change', list); flt.addEventListener('input', list); list();
     };
-    build(A, String(D.my_rid));
-    build(B, RIDS.find(r => r !== String(D.my_rid)));
+    build(A, myRid() || RIDS[0]);
+    build(B, RIDS.find(r => r !== myRid()));
+    window.DS_SET_TEAM = rid => { const s = A.querySelector('select'); if (s && T[rid]) { s.value = rid; s.dispatchEvent(new Event('change')); } };
     const picked = el => [...el.querySelectorAll('.opts input:checked')].map(i => i.value);
     go.addEventListener('click', () => {
       const a = A.querySelector('select').value, b = B.querySelector('select').value;
@@ -241,19 +245,20 @@
         for (const [r, list] of [[a, a_gives], [b, b_gives]]) res.push((Array.isArray(list) ? list : []).map(n => { const k = findIn(r, String(n)); if (!k) miss.push(`${n} (not on ${T[r].owner})`); return k; }).filter(Boolean));
         if (miss.length) throw new Error('Not found: ' + miss.join(', '));
         return evaluateTrade(a, res[0], b, res[1]); } },
-    { name: 'league', description: "League overview: every team's record, points and playoff odds, the asking owner's trade plan, recent news alerts on their players, data freshness and how the projections were tested.",
-      execute: () => ({ league: D.league, season: D.season, data_generated: D.generated, you: D.me,
+    { name: 'league', description: "League overview: every team's record, points and playoff odds, data freshness and how the projections were tested (plus the owner's own notes where this page has them).",
+      execute: () => ({ league: D.league, season: D.season, data_generated: D.generated, you: meOwner(),
         standings: RIDS.map(r => ({ team: T[r].name, owner: T[r].owner, record: `${T[r].w}-${T[r].l}`, points_for: T[r].pf, playoff_odds: T[r].po, expected_wins: T[r].xw })).sort((x, y) => (y.playoff_odds || 0) - (x.playoff_odds || 0)),
-        trade_plan: D.plan, news_alerts: D.alerts, stale_sources: D.fresh.stale, freshness_checked: D.fresh.checked,
+        ...(D.plan ? { trade_plan: D.plan } : {}), ...(D.alerts ? { news_alerts: D.alerts } : {}), stale_sources: D.fresh.stale, freshness_checked: D.fresh.checked,
         projection_test: `2025 held-out weeks: blend ${D.model.test_blend} vs ours ${D.model.test} vs Sleeper ${D.model.test_sleeper} average points of error per player-game; blend weights on ours ${JSON.stringify(D.model.blend)}` }) },
   ];
-  const myTeam = T[String(D.my_rid)] || {};
-  const RULES = `You are the analyst for the dynasty fantasy football league "${D.league}" on Sleeper. The person asking manages "${myTeam.name}" (@${D.me}); "my team" means that one.
+  const rules = () => { const myTeam = T[myRid()] || {}; return `You are the analyst for the dynasty fantasy football league "${D.league}" on Sleeper. ${myTeam.name ? `The person asking manages "${myTeam.name}" (@${myTeam.owner}); "my team" means that one.` : 'The person asking has not picked a team yet; ask which team is theirs if it matters.'}
 Answer from this dashboard's data using the tools: find_player, team, evaluate_trade, league. The data was generated ${D.generated}; mention timing when it matters (injuries, news).
-Rules: lead with the answer, then the 2-4 numbers that support it. Plain English, no jargon; under 200 words unless asked for more. Never invent stats, injuries, news or values: if the tools don't have it, say it isn't in the data. "Blend" projections = our model mixed with Sleeper's (it beat both on held-out 2025 games). Trade values are neutral market values; playoff odds come from simulated seasons. No betting advice.`;
+Rules: lead with the answer, then the 2-4 numbers that support it. Plain English, no jargon; under 200 words unless asked for more. Never invent stats, injuries, news or values: if the tools don't have it, say it isn't in the data. "Blend" projections = our model mixed with Sleeper's (it beat both on held-out 2025 games). Trade values are neutral market values; playoff odds come from simulated seasons. No betting advice.`; };
   const COPY = { not_granted: 'Claude access was declined for this page. Allow it from the page menu to ask questions.', rate_limited: 'Too many questions at once — wait a moment, then ask again.',
     session_expired: 'Your Claude session expired — sign in again, then ask.', sampling_disabled: 'Claude isn\'t available for this account here.', refused: 'Claude declined that question.',
     prompt_too_large: 'That question pulled in too much data — ask about fewer players at once.', tools_unavailable: 'This view can\'t run the analyst\'s tools.', cancelled: '' };
+  // answers come back with light markdown (**bold**, "- " bullets): escape everything, then render just those two
+  const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/^\s*[-*] /gm, '• ');
   async function wireAsk() {
     const box = $('an-in'), btn = $('an-ask'), stop = $('an-stop'), note = $('an-note'), out = $('an-ans');
     if (!btn) return;
@@ -275,14 +280,14 @@ Rules: lead with the answer, then the 2-4 numbers that support it. Plain English
       turns.push({ role: 'user', content: q });
       try {
         const tools = TOOLS.map(t => ({ ...t, execute: (inp, ctx) => { note.textContent = 'Checking the data (' + t.name.replace('_', ' ') + ')…'; return t.execute(inp || {}, ctx); } }));
-        const { text } = await sample([{ role: 'user', content: RULES }, { role: 'assistant', content: 'Understood. Ask away.' }, ...turns.slice(-6)],
-          { signal: ctl.signal, tools, onText: ({ text }) => { out.textContent = text; note.textContent = ''; } });
-        out.textContent = text; note.textContent = '';
+        const { text } = await sample([{ role: 'user', content: rules() }, { role: 'assistant', content: 'Understood. Ask away.' }, ...turns.slice(-6)],
+          { signal: ctl.signal, tools, onText: ({ text }) => { out.innerHTML = md(text); note.textContent = ''; } });
+        out.innerHTML = md(text); note.textContent = '';
         turns.push({ role: 'assistant', content: text });
         box.value = '';
       } catch (e) {
         turns.pop();
-        out.textContent = e && e.text ? e.text : '';
+        out.innerHTML = e && e.text ? md(e.text) : '';
         note.textContent = (e && e.code in COPY) ? COPY[e.code] : 'Something went wrong (' + ((e && e.code) || 'error') + '). Try again.';
       } finally { btn.disabled = false; stop.hidden = true; }
     };

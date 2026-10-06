@@ -55,9 +55,14 @@ def main():
     cfg = json.load(open(os.path.join(ROOT, 'config.json')))
     me = cfg.get('my_username')
     fence = set(cfg.get('untouchable') or [])          # hard no (legacy / optional)
+    # --as <username> (league edition, added 2026-10-05): the same search from another owner's side, NEUTRAL — none of
+    # this owner's private settings (king's-ransom prices, untouchables, long-term plan bonuses) and no report files
+    AS = sys.argv[sys.argv.index('--as') + 1] if '--as' in sys.argv else None
+    if AS:
+        me, fence = AS, set()
     # king's-ransom rules: a number = multiplier on our value; {"surplus": N} = the evaluation must favor you
     # by at least N on MARKET value (what a KTC-style calculator shows), e.g. +9,000
-    premium = {str(k): v for k, v in (cfg.get('premium') or {}).items()}
+    premium = {} if AS else {str(k): v for k, v in (cfg.get('premium') or {}).items()}
     rosters, names = PK.rosters, {r['roster_id']: PK.rid2user.get(r['roster_id']) for r in PK.rosters}
     my_rid = next(rid for rid, n in names.items() if n == me)
     po = json.load(open(os.path.join(DATA, 'pick_odds.json'))) if os.path.exists(os.path.join(DATA, 'pick_odds.json')) else {}
@@ -128,9 +133,10 @@ def main():
                 # dynasty value against the long-term plan (ops/dynasty_value.py): window value + plan bonuses
                 ag = lambda a: (P.get(a) or {}).get('age')
                 pk_ = lambda a: a.startswith('pick:')
-                dyn = (DV.window_value(gmkt(get) if False else mkt(get), pos_of(get), ag(get)) + DV.plan_fit(get, pos_of(get), ag(get), mkt(get), 'get')[0]
+                fit = (lambda *a: (0, '')) if AS else DV.plan_fit      # the plan bonuses are this owner's strategy, not theirs
+                dyn = (DV.window_value(gmkt(get) if False else mkt(get), pos_of(get), ag(get)) + fit(get, pos_of(get), ag(get), mkt(get), 'get')[0]
                        - sum(DV.window_value(gmkt(a), None if pk_(a) else pos_of(a), None if pk_(a) else ag(a)) for a in give)
-                       + sum(DV.plan_fit(a, None if pk_(a) else pos_of(a), None if pk_(a) else ag(a), gmkt(a), 'give')[0] for a in give))
+                       + sum(fit(a, None if pk_(a) else pos_of(a), None if pk_(a) else ag(a), gmkt(a), 'give')[0] for a in give))
                 if dw < 0.15 and not (dw >= -0.2 and dyn >= 200):
                     continue                                   # neither a season upgrade nor a plan upgrade
                 their_after = [p for p in theirs_act if p != get] + gp
@@ -209,9 +215,15 @@ def main():
                            'value_back': round(got), 'value_given': round(gmkt(a) if surplus is not None else gval(a)), 'their_overpay': round(over),
                            'my_wins': round(dw, 2), 'their_wins': round(tdw, 2)})
     ransom.sort(key=lambda x: (x['asset_label'], x['their_overpay']))
-    json.dump({'generated': time.strftime('%Y-%m-%d %H:%M'), 'from_week': wk_now, 'base_wins': round(base[my_rid], 2),
-               'n_evaluated': len(offers), 'best_by_partner': top, 'best_by_partner_dynasty': top_dyn, 'top': offers[:25], 'ransom': ransom},
-              open(os.path.join(DATA, 'trade_finder.json'), 'w'), indent=1)
+    res_ = {'generated': time.strftime('%Y-%m-%d %H:%M'), 'from_week': wk_now, 'base_wins': round(base[my_rid], 2),
+            'n_evaluated': len(offers), 'best_by_partner': top, 'best_by_partner_dynasty': top_dyn, 'top': offers[:25], 'ransom': ransom}
+    if AS:
+        os.makedirs(os.path.join(DATA, 'trade_finder_by_team'), exist_ok=True)
+        res_.pop('ransom')
+        json.dump(res_, open(os.path.join(DATA, 'trade_finder_by_team', f'{my_rid}.json'), 'w'))
+        print(f'trade finder (neutral, as {AS}) -> data/trade_finder_by_team/{my_rid}.json: {len(offers):,} offers, {len(top)} partners')
+        return
+    json.dump(res_, open(os.path.join(DATA, 'trade_finder.json'), 'w'), indent=1)
 
     why = {'contender': 'they keep their points while contending, and the value is close',
            'rebuilder': 'they gain market value while rebuilding', 'middle': 'value and points both hold for them'}

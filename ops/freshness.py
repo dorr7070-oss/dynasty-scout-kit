@@ -149,8 +149,11 @@ def main():
         r"OPEN_DECISIONS_DATE = '(\d{4}-\d\d-\d\d)'", open(os.path.join(ROOT, 'ops', 'league_dashboard.py')).read())
     if m:
         age_d = (NOW - time.mktime(time.strptime(m.group(1), '%Y-%m-%d'))) / 86400
-        add('"On the clock" list (hand-written)', 'ok' if age_d <= 3 else 'stale', f'written {m.group(1)}',
-            'rewrite OPEN_DECISIONS in ops/league_dashboard.py at each review')
+        if m.group(1) == '2000-01-01':      # a fresh kit install: the owner hasn't written the list yet, which isn't stale
+            add('"On the clock" list (hand-written)', 'ok', 'not written yet (optional: ask Claude to fill it in at a review)')
+        else:
+            add('"On the clock" list (hand-written)', 'ok' if age_d <= 3 else 'stale', f'written {m.group(1)}',
+                'rewrite OPEN_DECISIONS in ops/league_dashboard.py at each review')
 
     if fixed:
         print('freshness --fix: re-downloading ' + ', '.join(fixed) + ' this run (contents lagged the schedule)')

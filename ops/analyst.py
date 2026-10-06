@@ -28,7 +28,9 @@ jl = lambda f, d=None: json.load(open(os.path.join(DATA, f))) if os.path.exists(
 esc = html.escape
 
 
-def main():
+def build_bundle(edition='owner'):
+    """The page's data. edition='league' (ops/league_edition.py) drops everything private to this owner: the trade plan,
+    their news alerts, which team is theirs, and contract signals phrased from their side."""
     cfg = json.load(open(os.path.join(ROOT, 'config.json')))
     me = cfg.get('my_username')
     latest = sorted(jl('seasons.json'))[-1]
@@ -134,6 +136,18 @@ def main():
         'model': {'blend': om.get('blend'), 'test': (om.get('blend_test') or {}).get('ours'), 'test_sleeper': (om.get('blend_test') or {}).get('sleeper'),
                   'test_blend': (om.get('blend_test') or {}).get('blend')},
     }
+    if edition == 'league':
+        for k in ('plan', 'alerts', 'me', 'my_rid'):
+            bundle.pop(k, None)
+        for x in bundle['players'].values():
+            if x.get('ctr'):
+                x['ctr'] = {'class': x['ctr'].get('class')}          # the signal text is written from this owner's side
+    return bundle
+
+
+def main():
+    bundle = build_bundle()
+    out, teams, weeks, locked = bundle['players'], bundle['teams'], bundle['weeks'], bundle['locked']
     js = open(os.path.join(ROOT, 'ops', 'analyst.js')).read()
     css = open(os.path.join(ROOT, 'ops', 'analyst.css')).read()
     body = f'''<meta charset="utf-8"><title>Analyst</title><style>{css}</style><div class="wrap">

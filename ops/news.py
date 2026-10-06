@@ -39,8 +39,19 @@ KINDS = [  # first match wins; order = how much it can change a decision
 
 
 def get(url):
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    return json.load(urllib.request.urlopen(req, timeout=20))
+    # this Mac's system Python (LibreSSL) intermittently fails ESPN's TLS handshake (seen 2026-10-05: one team feed of
+    # 33); retry once, then fetch with curl, the same workaround context.py and values.py use
+    for _ in range(2):
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            return json.load(urllib.request.urlopen(req, timeout=20))
+        except Exception:
+            time.sleep(1)
+    import subprocess
+    r = subprocess.run(['curl', '-sL', '--max-time', '30', '-A', 'Mozilla/5.0', url], capture_output=True, text=True)
+    if r.returncode or not r.stdout.strip():
+        raise RuntimeError(f'curl failed ({r.returncode})')
+    return json.loads(r.stdout)
 
 
 def norm(s):
