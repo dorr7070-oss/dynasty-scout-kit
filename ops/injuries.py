@@ -39,6 +39,9 @@ def main():
     vt = json.load(open(os.path.join(DATA, 'value_trends.json'))) if os.path.exists(os.path.join(DATA, 'value_trends.json')) else {}
     moved = {m['pid']: (m['w'] if m['w'] is not None else m['m']) for m in vt.get('movers', [])}
     me = json.load(open(os.path.join(ROOT, 'config.json'))).get('my_username')
+    # the week being played next: a game-day read uses THIS week's practice report only (2026-10-08: Smith's week-4
+    # DNP was read as this week's, 42%, while weekly.py — correctly — saw no week-5 report yet, 71%)
+    cur_wk = ((json.load(open(os.path.join(DATA, season, 'league.json'))).get('settings') or {}).get('last_scored_leg') or 0) + 1
 
     import weekly as W   # shares its 6-hour cache of nfldata games.csv (first run downloads it here)
     W.fetch(W.GAMES_URL, os.path.join(CACHE, 'games.csv'), 6 * 3600)
@@ -80,13 +83,15 @@ def main():
         inj_txt = p.get('injury_body_part') or pr.get('injury') or ''
         b = IS.bucket(inj_txt)
         val = round(cons.get(pid, {}).get('mean_market', cons.get(pid, {}).get('mean', 0)))
+        this_wk = pr.get('practice') if pr.get('week') == cur_wk else None
         row = {'pid': pid, 'name': p.get('full_name'), 'pos': p.get('position'), 'team': team, 'owner': own,
-               'status': st, 'injury': inj_txt or '—', 'bucket': b, 'value': val, 'practice': pr.get('practice')}
+               'status': st, 'injury': inj_txt or '—', 'bucket': b, 'value': val, 'practice': this_wk}
         if st in ('Questionable', 'Doubtful'):
-            k = f"{st}|{pr.get('practice') or 'none'}"
+            k = f"{st}|{this_wk or 'none'}"
             g = eff['gameday'].get(k) or eff['gameday'].get(f'{st}|none') or {}
             row['p_play'] = g.get('p_play')
-            row['read'] = f"plays {row['p_play']:.0%} of the time with that practice status" if row['p_play'] is not None else ''
+            row['read'] = ((f"plays {row['p_play']:.0%} of the time with that practice status" if this_wk else
+                            f"plays {row['p_play']:.0%} of the time (no practice report yet this week)") if row['p_play'] is not None else '')
         elif st in OUT_STATUSES:
             wk = (usage.get(pid) or {}).get('wk') or {}
             snapped = sorted(int(w) for w, x in wk.items() if (x.get('snap') or 0) > 0)

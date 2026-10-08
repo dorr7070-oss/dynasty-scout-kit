@@ -1,6 +1,7 @@
 # Personal to each owner — never pushed, never overwritten by an update
 config.json
 my_cards.py
+my_plan.json
 backup/
 data/*
 !data/contract_effects.json

@@ -21,6 +21,15 @@ they are left out of ordinary offers and priced separately as KING'S-RANSOM asks
 to 3 of each team's assets worth >= multiplier x his value (owner's rule 2026-10-02: no one is untouchable, the core
 just costs a king's ransom). Config "untouchable" is still honoured as a hard no if anyone sets it.
 A 2-for-1 that would overfill their active roster is flagged ("they must drop one").
+
+--ransom-basis market|plan|season|auto (DRAFT, 2026-10-08, owner's ask: "for dynasty, the king's ransom should matter
+for the owner's long-term plan; for redraft, for the current season"). Without the flag nothing changes (market).
+  market  the package's MARKET value must beat the core piece's by the surplus (the 10-02 rule)
+  plan    the package's LONG-TERM PLAN value (dynasty_value: window value + plan bonuses) must beat the core piece's
+          by the surplus — older returns count for less, younger for more
+  season  the trade must add at least {"wins": X} expected wins this season (default config "ransom_wins", 0.5)
+  auto    plan for dynasty/keeper leagues, season for redraft
+--out FILE writes the JSON there and skips TRADE_FINDER.md (so a draft run never touches the live report).
 """
 import json, math, os, sys, time
 from itertools import combinations
@@ -63,6 +72,10 @@ def main():
     # king's-ransom rules: a number = multiplier on our value; {"surplus": N} = the evaluation must favor you
     # by at least N on MARKET value (what a KTC-style calculator shows), e.g. +9,000
     premium = {} if AS else {str(k): v for k, v in (cfg.get('premium') or {}).items()}
+    BASIS = sys.argv[sys.argv.index('--ransom-basis') + 1] if '--ransom-basis' in sys.argv else 'market'
+    if BASIS == 'auto':
+        BASIS = 'season' if str(LF.PROFILE.get('league_type') or '').lower() == 'redraft' else 'plan'
+    OUT = sys.argv[sys.argv.index('--out') + 1] if '--out' in sys.argv else None
     rosters, names = PK.rosters, {r['roster_id']: PK.rid2user.get(r['roster_id']) for r in PK.rosters}
     my_rid = next(rid for rid, n in names.items() if n == me)
     po = json.load(open(os.path.join(DATA, 'pick_odds.json'))) if os.path.exists(os.path.join(DATA, 'pick_odds.json')) else {}
@@ -181,31 +194,59 @@ def main():
         surplus = rule.get('surplus') if isinstance(rule, dict) else None
         need = (gmkt(a) + surplus) if surplus is not None else float(rule) * gval(a)
         side = 2 if surplus is not None else 1          # compare on market (index 2) or our value (index 1)
+        ag_ = lambda x: (P.get(x) or {}).get('age')
+        def plan_val(x, s_):                            # value to the owner's plan seasons (dynasty_value.plan_value)
+            if x.startswith('pick:'):                   # a pick counts only from its draft year inside the plan
+                return DV.plan_value(gmkt(x) if s_ == 'give' else x_val.get(x, 0), None, None, x.split(':')[1]) \
+                    + DV.plan_fit(x, None, None, 0, s_)[0] * (1 if s_ == 'get' else -1)
+            return DV.plan_value(mkt(x), pos_of(x), ag_(x)) + (DV.plan_fit(x, pos_of(x), ag_(x), mkt(x), 'get')[0] if s_ == 'get' else 0)
+        plan_given = plan_val(a, 'give')
+        wins_need = (rule.get('wins') if isinstance(rule, dict) else None) or cfg.get('ransom_wins', 0.5)
         for rid, r in roster.items():
             if rid == my_rid:
                 continue
             assets = [(p, adj(p), mkt(p), P[p].get('full_name')) for p in sorted(
                 [p for p in active(r) if pos_of(p) in LF.POS and adj(p) >= GET_MIN], key=lambda p: -adj(p))[:8]]
+            x_val = {}
             for season, rnd, orig in owned.get(rid, []):
                 v, tier = PK.pick_value(season, rnd, orig)
                 if v >= 500:
                     assets.append((f'pick:{season}:{rnd}:{orig}', v, v, f'{season} {tier} {PK._RN.get(rnd, rnd)} ({names.get(orig)})'))
+                    x_val[f'pick:{season}:{rnd}:{orig}'] = v
             qual = []
             for k in (1, 2, 3, 4):
                 for combo in combinations(assets, k):
-                    got = sum(x[side] for x in combo)
-                    if got >= need:
-                        qual.append((sum(x[2] for x in combo) - gmkt(a), combo, got))
+                    if BASIS == 'market':
+                        got = sum(x[side] for x in combo)
+                        if got >= need:
+                            qual.append((sum(x[2] for x in combo) - gmkt(a), combo, got))
+                    elif BASIS == 'plan' and surplus is not None:
+                        got = sum(plan_val(x[0], 'get') for x in combo)
+                        if got - plan_given >= surplus:
+                            qual.append((sum(x[2] for x in combo) - gmkt(a), combo, got))
+                    elif BASIS == 'season':
+                        if sum(x[2] for x in combo) >= 0.7 * gmkt(a):   # plausibly heard; wins decide below
+                            qual.append((sum(x[2] for x in combo) - gmkt(a), combo, sum(x[2] for x in combo)))
             if not qual:
                 continue
             # among the 30 qualifying packages they overpay least on, take the one that helps YOUR season
             # most (you are contending), ties broken by the smaller overpay — the likeliest to be heard
             scored = []
-            for over, combo, got in sorted(qual, key=lambda q: q[0])[:30]:
+            for over, combo, got in sorted(qual, key=lambda q: q[0])[:(400 if BASIS == 'season' else 30)]:
                 gp = [x[0] for x in combo if not x[0].startswith('pick:')]
                 dw_ = exp_wins(my_rid, [p for p in my_act if p != a] + gp) - base[my_rid]
-                scored.append((round(dw_, 2), -over, over, combo, got))
-            dw, _, over, combo, got = max(scored)
+                if BASIS == 'season' and dw_ < wins_need:
+                    continue                            # season basis: the 30 cheapest packages that clear the wins bar
+                if BASIS == 'season' and len(scored) >= 30:
+                    break
+                # plan basis (owner 10-08: "show the likeliest first"): the smallest market overpay that clears the
+                # plan ransom, ties -> more plan value; market/season: the most wins this season
+                # (full tuple on the other bases so ties break exactly as before this change)
+                key_ = (-round(over), round(got - plan_given)) if BASIS == 'plan' else (round(dw_, 2), -over, over, combo, got)
+                scored.append((key_, round(dw_, 2), over, combo, got))
+            if not scored:
+                continue
+            _, dw, over, combo, got = max(scored, key=lambda t: t[0])
             gp = [x[0] for x in combo if not x[0].startswith('pick:')]
             their_after = [p for p in active(r) if pos_of(p) in LF.POS and p not in gp] + ([a] if not a.startswith('pick:') else [])
             tdw = exp_wins(rid, their_after) - base[rid]
@@ -213,10 +254,16 @@ def main():
                                                                      else f'x{float(rule)}'), 'need': round(need), 'partner': names[rid],
                            'playoff': round(playoff.get(rid, 0.5), 3), 'get_labels': [x[3] for x in combo],
                            'value_back': round(got), 'value_given': round(gmkt(a) if surplus is not None else gval(a)), 'their_overpay': round(over),
-                           'my_wins': round(dw, 2), 'their_wins': round(tdw, 2)})
+                           'my_wins': round(dw, 2), 'their_wins': round(tdw, 2), 'basis': BASIS,
+                           'plan_gain': round(sum(plan_val(x[0], 'get') for x in combo) - plan_given)})
     ransom.sort(key=lambda x: (x['asset_label'], x['their_overpay']))
     res_ = {'generated': time.strftime('%Y-%m-%d %H:%M'), 'from_week': wk_now, 'base_wins': round(base[my_rid], 2),
-            'n_evaluated': len(offers), 'best_by_partner': top, 'best_by_partner_dynasty': top_dyn, 'top': offers[:25], 'ransom': ransom}
+            'n_evaluated': len(offers), 'best_by_partner': top, 'best_by_partner_dynasty': top_dyn, 'top': offers[:25], 'ransom': ransom,
+            'ransom_basis': BASIS}
+    if OUT:
+        json.dump(res_, open(OUT, 'w'))
+        print(f'trade finder (ransom basis: {BASIS}) -> {OUT}: {len(ransom)} king\'s-ransom packages')
+        return
     if AS:
         os.makedirs(os.path.join(DATA, 'trade_finder_by_team'), exist_ok=True)
         res_.pop('ransom')
@@ -247,7 +294,13 @@ def main():
     M += [f"| {o['partner']} | {' + '.join(o['give_labels'])} | {o['get_label']} ({o['get_pos']}) | {o['dyn']:+,} | {o['my_wins']:+.2f} | {o['their_value']:+,} |" for o in top_dyn] or ['| — | | | | | |']
     M += ['', "## King's ransom — what each core asset would cost", '',
           '_No one is untouchable; the core just needs a king\'s ransom (config `premium`): for the core, the trade evaluation must '
-          'favor you by the configured surplus (e.g. +3,000) or more on market value. Per team, among the cheapest qualifying packages of up to 4 of their assets, the one that helps your season most. "Their overpay" is how far above market they would have to go; the smaller, the likelier._', '']
+          + ({'plan': 'beat what you give by the configured surplus (e.g. +3,000) in LONG-TERM PLAN value (dynasty: each piece valued '
+                       'across your plan seasons, players aged, picks counted only from their draft year). Per team, the likeliest '
+                       'qualifying package (smallest market overpay), likeliest first. See KINGS_RANSOM_GUIDE.md._',
+              'season': 'add at least the configured wins THIS SEASON (redraft). Per team, among the 30 likeliest qualifying packages, '
+                        'the one that adds the most wins._'}.get(BASIS,
+             'favor you by the configured surplus (e.g. +3,000) or more on market value. Per team, among the cheapest qualifying packages of up to 4 of their assets, the one that helps your season most._')
+             + ' "Their overpay" is how far above market they would have to go; the smaller, the likelier.'), '']
     for a in dict.fromkeys(x['asset'] for x in ransom):
         rows_ = [x for x in ransom if x['asset'] == a][:4]
         M += [f"**{rows_[0]['asset_label']}** (value {rows_[0]['value_given']:,}; rule {rows_[0]['rule']} = needs {rows_[0]['need']:,} back)", '',

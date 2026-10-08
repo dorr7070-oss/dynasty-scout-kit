@@ -119,7 +119,7 @@ the commissioner changes settings. What each setting changes is in `docs/LEAGUE_
 | Manager skill | `ops/manager_skill.py` | `MANAGER_SKILL.md` — lineup efficiency, waiver/draft hit rates |
 | Source pages | `ops/league_dashboard.py`, `ops/assets_dashboard.py`, `ops/analysis_dashboard.py` | league, asset board, game day and analysis pages (inputs to the hub) |
 | Analyst | `ops/analyst.py` (+ `analyst.js`, `analyst.css`) | Player Lookup, Trade Analyzer (re-runs the season sim in the page), Ask the Analyst |
-| **The dashboard** | `ops/hub_dashboard.py` | **`dashboards/hub.html`** — one page, tabs This Week · Trades · Season · Players · League · Picks · Ask; opens on Game Day on Sun/Mon. This is the page to publish and show |
+| **The dashboard** | `ops/hub_v2.py` (reuses helpers in `ops/hub_dashboard.py`) | **`dashboards/hub.html`** — one page, summary first: "Do This Now" cards, your opponent, key dates, the game-plan status; tabs This Week · Trades · My Plan · League · Picks, detail sections folded, player lookup + Ask behind the search button; live matchup leads on Sun/Mon. This is the page to publish and show |
 | News, trending, freshness | `ops/news.py`, `ops/trending.py`, `ops/freshness.py` | ESPN news per rostered player (injury, suspension, contract, role) with 72-hour alerts; Sleeper adds/drops; a contents-based check of every source |
 | Cap + missing starters + tracking | `ops/cap.py`, `ops/absence_study.py`, `ops/ngs.py` | cut risk from OverTheCap dead money; own offensive-line absences; Next Gen Stats kept only where they beat the model on held-out seasons |
 
@@ -139,8 +139,12 @@ pick is valued over its lottery slot odds. The market (especially KTC) prices pi
   `<!-- MANUAL SCOUTING NOTES ... -->` marker regenerates each run. **Below it is yours: append
   dated notes, never rewrite or delete old ones.** Anything the owner learns about another owner
   (who wants what, who said no, prices floated) goes in that owner's profile immediately.
-- **Your own profile** holds a section titled **`CURRENT STRATEGY`**: the plan of record. Judge
-  every trade against it; if a trade breaks it, say so and offer to revisit the plan.
+- **Your own profile** holds a section titled **`CURRENT STRATEGY`**: the reasoning behind the plan.
+- **`my_plan.json`** (folder root, git-ignored) — the plan of record in a form the dashboard can score: checkpoints,
+  playoff-odds floor, core + king's ransom, keep/sell lists, pick policy. Written by Claude through the strategy
+  session (`STRATEGY.md`; field reference `PLAN_INTERVIEW.md`), never hand-edited by the owner. Judge every trade
+  against it; if a trade breaks it, say so and offer to revisit the plan. "Change my king's ransom" / "add X to my
+  core" → update `my_plan.json` AND `config.json` `premium` together (`KINGS_RANSOM_GUIDE.md`).
 - **`my_cards.py`** (folder root, git-ignored) — the hand-written dashboard cards (`OPEN_DECISIONS_DATE`,
   `OPEN_DECISIONS`, `MY_ACTIONS`, `OWNER_READS`, `WINDOW_OVERRIDE`) and `TRAJ_2028` (your read on which owners
   rise or fall by 2028). Create it on first use by copying the starter block from `ops/league_dashboard.py`
