@@ -120,6 +120,8 @@ the commissioner changes settings. What each setting changes is in `docs/LEAGUE_
 | Source pages | `ops/league_dashboard.py`, `ops/assets_dashboard.py`, `ops/analysis_dashboard.py` | league, asset board, game day and analysis pages (inputs to the hub) |
 | Analyst | `ops/analyst.py` (+ `analyst.js`, `analyst.css`) | Player Lookup, Trade Analyzer (re-runs the season sim in the page), Ask the Analyst |
 | **The dashboard** | `ops/hub_v2.py` (reuses helpers in `ops/hub_dashboard.py`) | **`dashboards/hub.html`** — one page, summary first: "Do This Now" cards, your opponent, key dates, the game-plan status; tabs This Week · Trades · My Plan · League · Picks, detail sections folded, player lookup + Ask behind the search button; live matchup leads on Sun/Mon. This is the page to publish and show |
+| Trade paths | `ops/trade_paths.py` + `my_trade_paths.json` (personal, git-ignored) | Trades tab "Trade Paths": the owner's saved trade routes, re-simulated every refresh, steps ordered lowest-risk first, king's-ransom check on core moves, and a "your team after" view (lineup now vs after, this week, 2027/2028 aged, plan + market value, picks). Write routes there when the owner works one out with you |
+| Team needs | `ops/team_needs.py` | League tab "Team Needs": every team's needs vs surplus by position and which of the owner's spare players fill them |
 | News, trending, freshness | `ops/news.py`, `ops/trending.py`, `ops/freshness.py` | ESPN news per rostered player (injury, suspension, contract, role) with 72-hour alerts; Sleeper adds/drops; a contents-based check of every source |
 | Cap + missing starters + tracking | `ops/cap.py`, `ops/absence_study.py`, `ops/ngs.py` | cut risk from OverTheCap dead money; own offensive-line absences; Next Gen Stats kept only where they beat the model on held-out seasons |
 
@@ -203,6 +205,13 @@ Load a trade by URL and read the page text:
 calculator gives a "value adjustment" bonus to the side receiving the single best piece.
 
 ---
+
+## Trade rules the tools enforce (config.json, set from the owner's word)
+
+- `not_interested` {owner: [player ids]}: an owner won't want that player (e.g. he already has a better one at that spot, or a fan loyalty). Kept out of offers to him.
+- `owner_asks` {player id: text}: an owner's stated price for his player. Offers below it stay visible, tagged and sorted lower — never hidden.
+- `off_limits` {player id: reason}: only when the owner or the other owner says the player is unavailable — never because the owner lacks the pieces today. A price he can't pay yet means building a route to it (`my_trade_paths.json`).
+- Built in: no offering a player to an owner who already rosters someone from the same NFL team at the same position, unless the two are an RB/QB starter-backup pair (handcuff), in either direction.
 
 ## Rules
 

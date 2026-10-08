@@ -64,6 +64,9 @@ def main():
     cfg = json.load(open(os.path.join(ROOT, 'config.json')))
     me = cfg.get('my_username')
     fence = set(cfg.get('untouchable') or [])          # hard no (legacy / optional)
+    # owner intel (2026-10-08): {"<username>": [asset ids]} that owner won't want — never offered to them
+    snub = {u: set(map(str, v)) for u, v in (cfg.get('not_interested') or {}).items()}
+    off_limits = set(map(str, (cfg.get('off_limits') or {})))   # players whose owner's price can't be met: never targeted
     # --as <username> (league edition, added 2026-10-05): the same search from another owner's side, NEUTRAL — none of
     # this owner's private settings (king's-ransom prices, untouchables, long-term plan bonuses) and no report files
     AS = sys.argv[sys.argv.index('--as') + 1] if '--as' in sys.argv else None
@@ -85,6 +88,22 @@ def main():
 
     def active(r):
         return [p for p in (r.get('players') or []) if p not in (r.get('taxi') or []) and p not in (r.get('reserve') or [])]
+
+    def team_clash(g, partner_roster):
+        """Owner's rule (owner, 2026-10-08): don't offer a player to an owner who already has someone from the same NFL team at the same
+        position — unless they form a starter/backup pair at RB or QB (depth chart 1 and 2), which helps that owner either way (the
+        handcuff for their starter, or the starter for their handcuff). -> (blocked, handcuff_partner_name or None)"""
+        gp = P.get(g) or {}
+        if not gp.get('team') or g.startswith('pick:'):
+            return False, None
+        for q in partner_roster or []:
+            qp = P.get(q) or {}
+            if q == g or qp.get('team') != gp.get('team') or qp.get('position') != gp.get('position'):
+                continue
+            if gp.get('position') in ('RB', 'QB') and {gp.get('depth_chart_order'), qp.get('depth_chart_order')} == {1, 2}:
+                return False, qp.get('full_name')
+            return True, None
+        return False, None
     roster = {r['roster_id']: r for r in rosters}
 
     from decided import decided, result
@@ -125,11 +144,17 @@ def main():
         if rid == my_rid:
             continue
         theirs_act = [p for p in active(r) if pos_of(p) in LF.POS]
-        gets = sorted([p for p in theirs_act if adj(p) >= GET_MIN], key=lambda p: -mkt(p))[:MAX_GET]
+        gets = sorted([p for p in theirs_act if adj(p) >= GET_MIN and p not in off_limits], key=lambda p: -mkt(p))[:MAX_GET]
         po_ = playoff.get(rid, 0.5)
         window = 'contender' if po_ >= 0.6 else 'rebuilder' if po_ <= 0.25 else 'middle'
         for get in gets:
             for give in gives:
+                if snub.get(names[rid]) and snub[names[rid]] & set(give):
+                    continue                                   # owner intel: they won't want this piece
+                clash = [team_clash(g, r.get('players')) for g in give]
+                if any(c[0] for c in clash):
+                    continue                                   # same NFL team + position already on their roster
+                handcuff = [c[1] for c in clash if c[1]]
                 gm = sum(gmkt(a) for a in give)
                 if not (0.75 * mkt(get) <= gm <= 1.6 * mkt(get)):
                     continue                                   # not in the same value neighbourhood
@@ -166,7 +191,7 @@ def main():
                                'give': list(give), 'give_labels': [label(a) for a in give], 'get': get,
                                'get_label': P[get].get('full_name'), 'get_pos': pos_of(get),
                                'my_wins': round(dw, 2), 'my_value': round(my_val), 'their_value': round(their_val),
-                               'their_wins': round(tdw, 2), 'they_must_drop': full, 'dyn': round(dyn),
+                               'their_wins': round(tdw, 2), 'they_must_drop': full, 'dyn': round(dyn), 'handcuff': handcuff,
                                'score': round(10 * dw + my_val / 1000, 2)})
     offers.sort(key=lambda o: -o['score'])
     best_by_partner, seen_get = {}, set()
@@ -287,7 +312,8 @@ def main():
                  f"{why[o['window']]}{' · they must drop one' if o['they_must_drop'] else ''} |")
     if not top:
         M.append('| — | no offer passes both sides right now | | | | | | |')
-    M += ['', '## Best offer to each owner for the LONG-TERM plan (Contend 2026-28)', '',
+    plan_name = (lambda: (json.load(open(os.path.join(ROOT, 'my_plan.json'))).get('name') if os.path.exists(os.path.join(ROOT, 'my_plan.json')) else None) or 'your long-term plan')()
+    M += ['', f'## Best offer to each owner for the LONG-TERM plan ({plan_name})', '',
           '_Dynasty value = market value averaged over 2026-28, aged with our measured age curves, plus plan bonuses (spend 2027 picks, '
           'keep 2028 picks, fill RB2/TE now, add a WR 25 or younger). Season must not drop more than 0.2 wins._', '',
           '| Owner | You give | You get | Dynasty | Season wins | Their value |', '|---|---|---|---|---|---|']

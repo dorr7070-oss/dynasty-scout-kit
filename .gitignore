@@ -28,3 +28,4 @@ REPORT.md
 research/PROSPECTS.md
 __pycache__/
 .DS_Store
+my_trade_paths.json

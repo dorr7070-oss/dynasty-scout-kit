@@ -22,7 +22,7 @@ def ensure_config(root):
 
 STEPS = [  # (script, optional)
     ('freshness.py --fix', True), ('league_profile.py', False), ('fetch.py', False), ('news.py', True), ('trending.py', True), ('values.py', False), ('usage.py', False), ('usage_adv.py', True), ('context.py', False), ('contract_study.py', True), ('cap.py', True), ('contracts.py', True), ('value_trends.py', True),
-    ('project.py', False), ('injury_study.py', True), ('injuries.py', True), ('weekly_study.py', True), ('absence_study.py', True), ('weekly.py', True), ('waivers.py', True), ('lottery.py', False), ('lottery_tracker.py', True), ('trade_finder.py --ransom-basis auto', True), ('our_projections.py', True), ('ngs.py', True), ('prospects.py', True), ('cfbd.py', True),
+    ('project.py', False), ('injury_study.py', True), ('injuries.py', True), ('weekly_study.py', True), ('absence_study.py', True), ('weekly.py', True), ('waivers.py', True), ('lottery.py', False), ('lottery_tracker.py', True), ('trade_finder.py --ransom-basis auto', True), ('trade_paths.py', True), ('our_projections.py', True), ('team_needs.py', True), ('ngs.py', True), ('prospects.py', True), ('cfbd.py', True),
     ('profiles.py', False), ('report.py', False), ('advise.py', False), ('draft.py', False),
     ('trade_grades.py', False), ('manager_skill.py', False),
     ('freshness.py', True), ('league_dashboard.py', False), ('assets_dashboard.py', False), ('insights.py', True), ('analysis_dashboard.py', True), ('analyst.py', True), ('hub_v2.py', True),

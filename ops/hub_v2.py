@@ -252,6 +252,17 @@ def offer_flags(o, ctx, nm):
         if int(rnd) in ctx['hold'].get(y, set()) and g not in ctx['core_picks']:
             F.append(('crit', f'Gives a {y} round-{rnd} pick — your plan holds those'))
             break
+    tn = {t['owner']: t for t in (J('team_needs.json').get('teams') or [])}.get(o.get('partner'))
+    if tn:
+        P_ = J('players.json')
+        fills = sorted({(P_.get(g) or {}).get('position') for g in o.get('give') or []} & {n['pos'] for n in tn['needs']})
+        if fills:
+            F.append(('good', f'Fills their need at {", ".join(fills)}'))
+    if o.get('handcuff'):
+        F.append(('good', f'Handcuff pairing with their {", ".join(o["handcuff"])}'))
+    ask = (LF.CFG.get('owner_asks') or {}).get(str(o.get('get')))
+    if ask:
+        F.append(('warn', ask))
     got_sell = [n for n in get_names if n in ctx['sell']]
     if got_sell:
         F.append(('crit', f'Takes back {", ".join(got_sell)}, who your plan says to sell'))
@@ -285,16 +296,18 @@ def offers_section(ctx):
     for o in offers:
         F = offer_flags(o, ctx, nm)
         bad = sum(c == 'crit' for c, _ in F)
-        rows.append((bad, -(o.get('score') or 0), o, F))
-    rows.sort(key=lambda r: (r[0], r[1]))
-    best = next((o for bad, _, o, _ in rows if not bad), None)
+        asked = 1 if (LF.CFG.get('owner_asks') or {}).get(str(o.get('get'))) else 0
+        rows.append((bad, asked, -(o.get('score') or 0), o, F))
+    rows.sort(key=lambda r: (r[0], r[1], r[2]))
+    best = next((o for bad, asked, _, o, _ in rows if not bad and not asked), None)
     def row(o, F):
         return (f'<div class="offer"><div class="oline"><b>{esc(o["partner"])}</b>: give {esc(" + ".join(o["give_labels"]))} → get '
                 f'<b>{esc(o["get_label"])}</b></div><div class="onums"><span>{(o.get("my_wins") or 0):+.1f} wins this season</span>'
                 f'<span>{(o.get("dyn") or 0):+,} long-term value</span></div>'
                 + ('<div class="chips">' + ''.join(f'<span class="chip {c}">{esc(t)}</span>' for c, t in F) + '</div>' if F else '') + '</div>')
-    ok = [row(o, F) for bad, _, o, F in rows if not bad][:6]
-    no = [row(o, F) for bad, _, o, F in rows if bad]
+    ok = [row(o, F) for bad, asked, _, o, F in rows if not bad and not asked][:6]
+    below = [row(o, F) for bad, asked, _, o, F in rows if not bad and asked]
+    no = [row(o, F) for bad, _, _, o, F in rows if bad]
     basis = tf.get('ransom_basis') or 'market'   # update.sh runs trade_finder --ransom-basis auto (plan / season)
     rs_src = tf.get('ransom')
     # likeliest first (owner 10-08): the smallest market overpay that still clears the ransom
@@ -319,9 +332,159 @@ def offers_section(ctx):
     html_ = (f'<section class="src-league offers" id="sec-offers-vs-plan"><div class="kicker">Trade Finder · plan check</div>'
              f'<h2 class="disp">Best Offers vs Your Plan</h2><p class="lede">{mode}. Offers that break a plan rule drop to the bottom; '
              'gold tags are allowed but need a reason.</p>' + ''.join(ok)
+             + (fold(f'Below an owner\'s stated price ({len(below)})', 'The model likes these, but the owner has named a higher price — a starting point, not a likely yes', ''.join(below)) if below else '')
              + (fold(f'Offers that break your plan ({len(no)})', 'Kept for reference — each one breaks a rule in your plan', ''.join(no)) if no else '')
              + rs_html + '</section>')
     return html_, best
+
+
+# ------------------------------------------------------------------ team needs: every team's holes vs what it has
+def needs_section():
+    d = J('team_needs.json')
+    if not d or not d.get('teams'):
+        return ''
+    rows = []
+    for t in d['teams']:
+        needs = ', '.join(f'{n["pos"]} ({n["why"]})' for n in t['needs']) or '—'
+        surplus = ', '.join(f'{x["player"]} ({x["pos"]})' for x in t['surplus']) or '—'
+        pitch = '; '.join(f'{x["player"]} ({x["pos"]}' + (f', +{x["upgrade"]} pts/wk' if x['upgrade'] > 0 else '')
+                          + (', handcuff for ' + x['handcuff'] if x.get('handcuff') else '') + (', starts for you' if x.get('starts_for_you') else '') + ')'
+                          for x in t['pitch']) or '—'
+        rows.append(f'<tr class="{"you" if t["me"] else ""}"><td class="team">{esc(t["owner"])}<small>{esc(t.get("record") or "")} · '
+                    f'{(t.get("playoff") or 0) * 100:.0f}% playoffs</small></td><td>{esc(needs)}</td><td>{esc(surplus)}</td>'
+                    f'<td>{"—" if t["me"] else esc(pitch)}</td></tr>')
+    return (f'<section class="src-league" id="sec-team-needs"><div class="kicker">Every team · what they lack vs what they have</div>'
+            f'<h2 class="disp">Team Needs</h2><p class="lede">A need is a bottom-four unit (rest-of-season projection) or a hurt starter with '
+            f'no startable backup; surplus is a bench player who would start for half the league. "You can pitch" lists your players who '
+            f'fill a need, skipping anyone from the same NFL team and position they already roster (unless it completes a starter/backup '
+            f'RB pair) and anyone an owner has said he won\'t want.</p><div class="scroller"><table><thead><tr><th>Team</th><th>Needs</th>'
+            f'<th>Surplus</th><th>You can pitch</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div></section>')
+
+
+# ------------------------------------------------------------------ trade paths: the owner's saved routes, re-simulated each refresh
+def paths_section():
+    d = J('trade_paths.json')
+    if not d or not d.get('paths'):
+        return ''
+    base = (d.get('base') or {}).get('playoff')
+    pct = lambda v: f'{v * 100:.0f}%' if v is not None else '—'
+    cards = []
+    for p in d['paths']:
+        prev, rows = base, []
+        for i, st in enumerate(p['steps'], 1):
+            a = (st.get('after') or {}).get('playoff')
+            delta = (f' <small>({(a - prev) * 100:+.0f})</small>' if a is not None and prev is not None else '')
+            chips = ''
+            r = st.get('ransom')
+            if r:
+                chips += (f'<span class="chip {"good" if r["clears"] else "crit"}">King\'s ransom for {esc(", ".join(r["core"]))}: '
+                          f'{r["gain"]:+,} vs {r["need"]:+,} needed</span>')
+            if st.get('risk'):
+                solo = st.get('alone')
+                rcss = {'low': 'good', 'medium': 'warn', 'high': 'crit'}[st['risk']]
+                chips += (f'<span class="chip {rcss}">'
+                          f'{st["risk"].capitalize()} risk: {esc(st.get("risk_why") or "")}'
+                          + (f' · {solo * 100:+.0f} on its own' if solo is not None else '') + '</span>')
+            for iss in st.get('issues') or []:
+                chips += f'<span class="chip crit">Route broken: {esc(iss)}</span>'
+            rows.append(f'<li><span class="stepn">{i}</span><span class="stept">{esc(st.get("label") or "")}'
+                        + (f'<span class="chips">{chips}</span>' if chips else '') + f'</span><span class="num">{pct(a)}{delta}</span></li>')
+            prev = a if a is not None else prev
+        # "your team after" — step tabs, before/after lineup, ranks, roster moves, picks
+        before = d.get('before') or {}
+        team_html = ''
+        if before and any(st.get('team') for st in p['steps']):
+            tabs, panes = [], []
+            for i, st in enumerate(p['steps'], 1):
+                t = st.get('team')
+                if not t:
+                    continue
+                on = i == len(p['steps'])
+                arrow = lambda a_, b_, lower_better=False: ('' if a_ == b_ else
+                    f' <span class="{"up" if ((b_ < a_) if lower_better else (b_ > a_)) else "dn"}">{"▲" if ((b_ < a_) if lower_better else (b_ > a_)) else "▼"}</span>')
+                odds_b, odds_a = (d.get('base') or {}).get('playoff'), (st.get('after') or {}).get('playoff')
+                tiles = [('Playoff odds', pct(odds_b), pct(odds_a) + (arrow(odds_b, odds_a) if odds_a is not None and odds_b is not None else '')),
+                         ('Lineup pts/wk (rest of season)', f'{before["total"]}', f'{t["total"]}{arrow(before["total"], t["total"])}'),
+                         ('This week\'s lineup', f'{before["week_total"]}', f'{t["week_total"]}{arrow(before["week_total"], t["week_total"])}'),
+                         ('2027 lineup (aged)', f'{before["y2027"]}', f'{t["y2027"]}{arrow(before["y2027"], t["y2027"])}'),
+                         ('2028 lineup (aged)', f'{before["y2028"]}', f'{t["y2028"]}{arrow(before["y2028"], t["y2028"])}'),
+                         ('Plan value (2026-28)', f'{before["plan_value"]:,}', f'{t["plan_value"]:,}{arrow(before["plan_value"], t["plan_value"])}'),
+                         ('Market value', f'{before["value"]:,}', f'{t["value"]:,}{arrow(before["value"], t["value"])}'),
+                         ('Starter age', f'{before["avg_age"]}', f'{t["avg_age"]}')]
+                tiles += [(f'{pos} rank', f'#{before["ranks"][pos]}', f'#{t["ranks"][pos]}{arrow(before["ranks"][pos], t["ranks"][pos], True)}')
+                          for pos in ('QB', 'RB', 'WR', 'TE')]
+                tile_html = ''.join(f'<div class="ttile"><div class="tl">{esc(l)}</div><div class="tv"><span class="was">{bv}</span> → {av}</div></div>'
+                                    for l, bv, av in tiles)
+                badge = lambda x: (' <span class="tg core">core</span>' if x.get('tag') == 'core' else
+                                   ' <span class="tg keep">keep</span>' if x.get('tag') == 'keep' else '')
+                def lineup_table(bl, al, btot, atot, basis, hidden):
+                    rr = []
+                    for bx, ax in zip(bl, al):
+                        changed = bx.get('pid') != ax.get('pid')
+                        cl = lambda x: (f'{esc(x["name"] or "—")}{badge(x)} <small>{esc(x["pos"] or "")} · {x["ppg"]}</small>'
+                                        + (f' <span class="inj">{esc(x["inj"])}</span>' if x.get('inj') else '')) if x.get('name') else '—'
+                        rr.append(f'<tr class="{"chg" if changed else ""}"><td class="slot">{esc(bx["slot"])}</td><td>{cl(bx)}</td>'
+                                  f'<td class="{"newin" if changed else ""}">{cl(ax)}</td></tr>')
+                    rr.append(f'<tr class="tot"><td></td><td>{btot} pts/wk</td><td>{atot} pts/wk</td></tr>')
+                    return (f'<table class="lineupcmp" data-basis="{basis}"{" hidden" if hidden else ""}><thead><tr><th></th><th>Now</th><th>After</th></tr></thead>'
+                            f'<tbody>{"".join(rr)}</tbody></table>')
+                tables = (lineup_table(before['lineup'], t['lineup'], before['total'], t['total'], 'ros', False)
+                          + lineup_table(before['week_lineup'], t['week_lineup'], before['week_total'], t['week_total'], 'week', True))
+                lrows = []
+                for bx, ax in zip(before['lineup'], t['lineup']):
+                    changed = bx.get('pid') != ax.get('pid')
+                    cell = lambda x: (f'{esc(x["name"] or "—")} <small>{esc(x["pos"] or "")} · {x["ppg"]}</small>'
+                                      + (f' <span class="inj">{esc(x["inj"])}</span>' if x.get('inj') else '')) if x.get('name') else '—'
+                    lrows.append(f'<tr class="{"chg" if changed else ""}"><td class="slot">{esc(bx["slot"])}</td><td>{cell(bx)}</td>'
+                                f'<td class="{"newin" if changed else ""}">{cell(ax)}</td></tr>')
+                lrows.append(f'<tr class="tot"><td></td><td>{before["total"]} pts/wk</td><td>{t["total"]} pts/wk</td></tr>')
+                bp = {x['key'] for x in before.get('picks') or []}
+                ap = {x['key'] for x in t.get('picks') or []}
+                pk = ''.join(f'<span class="pk {"new" if x["key"] not in bp else ""}">{esc(x["label"])}</span>' for x in t.get('picks') or []) \
+                     + ''.join(f'<span class="pk gone">{esc(x["label"])}</span>' for x in before.get('picks') or [] if x['key'] not in ap)
+                moves = (f'<div class="moves2"><div><b class="good">In</b> {esc(", ".join(t.get("in") or []) or "—")}</div>'
+                         f'<div><b class="bad">Out</b> {esc(", ".join(t.get("out") or []) or "—")}</div></div>')
+                tabs.append(f'<button class="ttab" aria-pressed="{"true" if on else "false"}" data-pane="{i}">After step {i}</button>')
+                verdict = f'<p class="verdict2">{esc(t.get("verdict") or "")}</p>' if t.get('verdict') else ''
+                basis_btns = ('<div class="lbasis"><button class="lb" aria-pressed="true" data-basis="ros">Rest of season</button>'
+                              '<button class="lb" aria-pressed="false" data-basis="week">This week</button></div>')
+                panes.append(f'<div class="tpane" data-pane="{i}"{"" if on else " hidden"}>{verdict}<div class="ttiles">{tile_html}</div>{moves}'
+                             f'{basis_btns}{tables}'
+                             f'<div class="kicker" style="margin-top:8px">Draft picks after</div><div class="pks">{pk}</div></div>')
+            team_html = (f'<details class="teamafter"><summary>Your team after this route</summary><div class="ttabs">{"".join(tabs)}</div>'
+                         f'{"".join(panes)}<p class="fb">Lineup = best starting lineup on rest-of-season points per week (our projection). '
+                         f'Ranks = your starting unit vs the other 11 teams after the same moves. 2027/2028 = this roster aged with the measured age curves '
+                         f'(draft picks not counted — they become rookies). Plan value = worth to your plan\'s seasons (the king\'s-ransom measure); '
+                         f'market value = trade-calculator scale. Tags: core = king\'s-ransom piece, keep = keep-starter; untagged = tradeable.</p></details>')
+        fin = (p.get('final') or {}).get('playoff')
+        cards.append(f'<div class="pathcard{" broken" if p.get("broken") else ""}"><div class="pathtop"><div><b>{esc(p["name"])}</b>'
+                     + (f' <span class="chip warn">{esc(p["decision"])}</span>' if p.get('decision') else '')
+                     + f'<div class="fb">{esc(p.get("why") or "")}</div></div><div class="pathodds"><div class="big">{pct(fin)}</div>'
+                     f'<div class="fb">playoff odds after</div></div></div><ol class="steps">{"".join(rows)}</ol>{team_html}</div>')
+    bf = d.get('before') or {}
+    cmp_rows = ''
+    if bf:
+        cmp_rows = (f'<tr class="you"><td><b>No trades</b></td><td>{pct(base)}</td><td>{bf.get("total")}</td><td>{bf.get("week_total")}</td>'
+                    f'<td>{bf.get("y2027")}</td><td>{bf.get("y2028")}</td><td>{bf.get("plan_value", 0):,}</td>'
+                    f'<td>{" / ".join("#" + str(bf["ranks"][x]) for x in ("RB", "WR"))}</td><td>—</td></tr>')
+        for p in d['paths']:
+            t = (p['steps'][-1] if p['steps'] else {}).get('team') or {}
+            if not t:
+                continue
+            rk = {'low': 'good', 'medium': 'warn', 'high': 'crit'}.get(p.get('max_risk'), '')
+            cmp_rows += (f'<tr><td><b>{esc(p["name"])}</b></td><td>{pct((p.get("final") or {}).get("playoff"))}</td><td>{t["total"]}</td>'
+                         f'<td>{t["week_total"]}</td><td>{t["y2027"]}</td><td>{t["y2028"]}</td><td>{t["plan_value"]:,}</td>'
+                         f'<td>{" / ".join("#" + str(t["ranks"][x]) for x in ("RB", "WR"))}</td>'
+                         f'<td><span class="chip {rk}">{esc((p.get("max_risk") or "").capitalize())}</span></td></tr>')
+    cmp_html = (f'<div class="scroller cmpwrap"><table class="cmp"><thead><tr><th>Route (final step)</th><th>Playoff odds</th><th>Pts/wk</th>'
+                f'<th>This week</th><th>2027</th><th>2028</th><th>Plan value</th><th>RB / WR rank</th><th>Riskiest step</th></tr></thead>'
+                f'<tbody>{cmp_rows}</tbody></table></div>') if cmp_rows else ''
+    return (f'<section class="src-league offers" id="sec-trade-paths"><div class="kicker">Your routes · re-simulated every refresh</div>'
+            f'<h2 class="disp">Trade Paths</h2><p class="lede">Playoff odds after each step, from a season simulation on live rosters '
+            f'(no trades: <b>{pct(base)}</b>). Steps run lowest-risk first, so each deal you land still helps if the later ones fall through. '
+            f'Picks don\'t change this season\'s odds, so only players are simulated. A route turns red if a '
+            f'player it needs has moved. Saved in my_trade_paths.json; ask Claude to add, change or drop a route.</p>{cmp_html}{"".join(cards)}'
+            f'<p class="fb">Updated {esc(d.get("generated", ""))}.</p></section>')
 
 
 # ------------------------------------------------------------------ game plan: the owner's written plan, scored live
@@ -608,6 +771,40 @@ CSS = """
 .goals li{padding:3px 0;color:var(--ink2)}.goals li.now{color:var(--ink);font-weight:600}
 .ifs{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink2);border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
 .warnline{color:var(--warn)!important;font-weight:600}
+.verdict2{margin:4px 0 10px;font-weight:600;font-size:14px;color:var(--ink);background:var(--you-bg);border-left:3px solid var(--gold);padding:8px 10px;border-radius:0 8px 8px 0}
+.lbasis{display:flex;gap:6px;margin:8px 0}.lb{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px;cursor:pointer;color:var(--ink2)}
+.lb[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tg{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:0 6px;margin-left:4px;vertical-align:1px}
+.tg.core{background:var(--gold);color:#1a1a1a}.tg.keep{border:1px solid var(--accent);color:var(--accent-ink)}
+.cmpwrap{margin:10px 0 4px}.src-league table.cmp{min-width:640px;font-size:13.5px}.cmp td,.cmp th{white-space:nowrap}
+.teamafter{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.teamafter>summary{cursor:pointer;font-weight:700;color:var(--accent-ink)}
+.ttabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.ttab{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 12px;cursor:pointer;color:var(--ink2)}
+.ttab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+.ttiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.ttile{border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.ttile .tl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ttile .tv{font-weight:700;font-variant-numeric:tabular-nums}.ttile .was{color:var(--muted);font-weight:400}
+.ttile .up{color:var(--good)}.ttile .dn{color:var(--crit)}
+.moves2{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0;font-size:14px}.moves2 .good{color:var(--good)}.moves2 .bad{color:var(--crit)}
+.pathcard table.lineupcmp{width:100%;min-width:0!important;table-layout:fixed;border-collapse:collapse;font-size:13.5px}
+.lineupcmp td{overflow-wrap:anywhere}.lineupcmp th:first-child,.lineupcmp td.slot{width:4.4em;white-space:nowrap}
+.lineupcmp td,.lineupcmp th{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}
+.lineupcmp .slot{font-weight:700;color:var(--muted);width:3.5em}.lineupcmp small{color:var(--muted)}
+.lineupcmp tr.chg td{background:var(--you-bg)}.lineupcmp td.newin{font-weight:600}
+.lineupcmp tr.tot td{font-weight:700;border-bottom:none}.lineupcmp .inj{color:var(--crit);font-size:11px;font-weight:700}
+.pks{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.pk{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.pk.new{border-color:var(--good);color:var(--good);font-weight:600}.pk.gone{border-color:var(--crit);color:var(--crit);text-decoration:line-through}
+.pathcard{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:12px 16px;margin:10px 0}
+.pathcard.broken{border-left-color:var(--crit)}
+.pathtop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.pathtop>div:first-child{flex:1 1 auto;min-width:0}.pathcard{min-width:0;overflow:hidden}
+.pathodds{text-align:right;flex:none}.pathodds .big{font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.steps{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.steps li{display:grid;grid-template-columns:22px minmax(0,1fr) max-content;gap:8px;align-items:start;font-size:14px;border-top:1px dashed var(--line);padding-top:6px}
+.stepn{font-weight:700;color:var(--muted)}.stept{display:flex;flex-direction:column;gap:4px}
+.steps .num{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}.steps .num small{color:var(--muted)}
 .offer{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;display:flex;flex-direction:column;gap:4px}
 .oline{font-size:14.5px}.onums{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .offers .chip.good,.plan .chip.good{border-color:var(--good);color:var(--good)}
@@ -626,6 +823,10 @@ function show(k,push){tabs.forEach(b=>{const on=b.id==='hubtab-'+k;b.setAttribut
   try{localStorage.setItem('hubtab',k)}catch(e){} if(push){try{history.replaceState(null,'','#'+k)}catch(e){}} window.scrollTo({top:0})}
 tabs.forEach(b=>b.addEventListener('click',()=>show(b.id.slice(7),true)));
 if(fb)fb.addEventListener('click',()=>show(fb.getAttribute('aria-pressed')==='true'?'week':'find',true));
+document.querySelectorAll('.teamafter').forEach(ta=>ta.querySelectorAll('.ttab').forEach(b=>b.addEventListener('click',()=>{
+  ta.querySelectorAll('.ttab').forEach(x=>x.setAttribute('aria-pressed',x===b));ta.querySelectorAll('.tpane').forEach(p=>p.hidden=p.dataset.pane!==b.dataset.pane)})));
+document.querySelectorAll('.tpane').forEach(pn=>pn.querySelectorAll('.lb').forEach(b=>b.addEventListener('click',()=>{
+  pn.querySelectorAll('.lb').forEach(x=>x.setAttribute('aria-pressed',x===b));pn.querySelectorAll('table.lineupcmp').forEach(t=>t.hidden=t.dataset.basis!==b.dataset.basis)})));
 // action cards jump to the folded section behind them and open it
 document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',()=>{const s=document.getElementById(a.dataset.go);if(!s)return;
   const p=s.closest('.hubpanel');show(p.id.slice(4),true);s.open=true;setTimeout(()=>s.scrollIntoView({behavior:'smooth',block:'start'}),50)}));
@@ -686,6 +887,12 @@ def main():
     if plan_card:
         cards.insert(0, plan_card)
     panels['season'].append((1, plan_html))
+    tn_html = needs_section()
+    if tn_html:
+        panels['league'].append((15, tn_html))
+    tp_html = paths_section()
+    if tp_html:
+        panels['trades'].append((2, tp_html))
     off_html, best = offers_section(ctx)
     if off_html:
         panels['trades'].append((5, off_html))

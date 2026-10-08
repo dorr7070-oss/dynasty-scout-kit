@@ -611,7 +611,7 @@ def build():
                      f'{" · they must drop one" if o["they_must_drop"] else ""}</span></div>')
         bd = tf.get('best_by_partner_dynasty') or []
         if bd:
-            O.append('<div class="card"><h3>Best for the long-term plan (Contend 2026-28)</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
+            O.append('<div class="card"><h3>Best for the long-term plan (' + esc((lambda: (json.load(open(os.path.join(ROOT, 'my_plan.json'))).get('name') if os.path.exists(os.path.join(ROOT, 'my_plan.json')) else None) or 'your long-term plan')()) + ')</h3><div style="font-size:12px;color:var(--muted);margin:-4px 0 4px">'
                      'Dynasty value = market value across 2026-28 aged with our age curves, plus plan bonuses (spend 2027 picks, keep 2028 picks, '
                      'fill RB2/TE now, add a WR 25 or younger). Season can\'t drop more than 0.2 wins.</div>')
             for o in bd[:8]:

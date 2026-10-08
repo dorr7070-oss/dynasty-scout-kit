@@ -74,7 +74,8 @@ def links(current):
 
 
 def page(title, body, scripts=''):
-    return (f'<meta charset="utf-8"><title>{esc(title)}</title><style>{CSS}</style><div class="wrap">{body}</div>{scripts}')
+    plan_name = (lambda: (json.load(open(os.path.join(ROOT, 'my_plan.json'))).get('name') if os.path.exists(os.path.join(ROOT, 'my_plan.json')) else None) or 'your long-term plan')()   # the owner's plan name (my_plan.json), never a hard-coded one
+    return (f'<meta charset="utf-8"><title>{esc(title)}</title><style>{CSS}</style><div class="wrap">{body}</div>{scripts}').replace('__PLANNAME__', esc(plan_name))
 
 
 def main():
@@ -378,7 +379,7 @@ function show(t){if(!t){o.textContent='No match. Pick a name from the list.';ret
 let h=`<p style="margin:10px 0 4px"><b>${e(t.name)}</b> · ${e(t.pos)} ${e(t.team||'')} · @${e(t.owner)} (${e(t.window)}) · value ${t.value.toLocaleString()}</p>`;
 const row=(p,i)=>`<div class="prow" style="grid-template-columns:1.6em minmax(0,1fr) 4.6em 5em"><span class="pos">${i+1}</span><span>${p.give.map(e).join(' + ')}${p.why&&p.why.length?`<br><small style="color:var(--muted)">${p.why.map(e).join(' · ')}</small>`:''}</span><span class="vv num" style="color:${p.my_wins>=0.1?'var(--good)':p.my_wins<=-0.1?'var(--crit)':'var(--ink2)'}">${p.my_wins>=0?'+':''}${p.my_wins.toFixed(2)} W</span><span class="vv num" style="color:${p.dyn>=150?'var(--good)':p.dyn<=-150?'var(--crit)':'var(--ink2)'}">${p.dyn>=0?'+':''}${p.dyn.toLocaleString()}</span></div>`;
 if(!t.packages.length)h+='<p>No package of yours clears both sides’ rules for this player.</p>';
-else{h+='<div class="kicker" style="margin-top:8px">Best for this season</div>'+t.packages.map(row).join('');h+='<div class="kicker" style="margin-top:10px">Best for the long-term plan (Contend 2026-28)</div>'+((t.dynasty||[]).map(row).join('')||'<p class="status">None that keeps the season intact.</p>')}
+else{h+='<div class="kicker" style="margin-top:8px">Best for this season</div>'+t.packages.map(row).join('');h+='<div class="kicker" style="margin-top:10px">Best for the long-term plan (__PLANNAME__)</div>'+((t.dynasty||[]).map(row).join('')||'<p class="status">None that keeps the season intact.</p>')}
 o.innerHTML=h+'<div class="status">Columns: what you give · expected wins this season · dynasty value across 2026-28 (aged with our age curves, plus the plan notes under each package).</div>'}
 q.addEventListener('input',()=>{const t=C.find(c=>c.name.toLowerCase()===q.value.trim().toLowerCase());if(t)show(t)});show(C[0]);})();</script>"""
                  + '</section>')
@@ -429,7 +430,7 @@ q.addEventListener('input',()=>{const t=C.find(c=>c.name.toLowerCase()===q.value
     plan_rows = ''.join(f'<tr><td class="team">{esc(t["name"])}<small>with {esc(t["partner"])}</small></td>'
                         f'<td class="n" style="color:var(--{"good" if (t.get("dynasty") or 0) >= 150 else "crit" if (t.get("dynasty") or 0) <= -150 else "ink2"})">{(t.get("dynasty") or 0):+,}</td></tr>'
                         for t in pc.get('trades') or [])
-    plan_html = ('<section id="plan"><div class="kicker">Long-term plan</div><h2 class="disp">Plan Check · Contend 2026-28</h2>'
+    plan_html = ('<section id="plan"><div class="kicker">Long-term plan</div><h2 class="disp">Plan Check · __PLANNAME__</h2>'
                  f'<p class="lede">Window strength = each team\'s top 16 players valued across the next {pc.get("window_years", 3)} seasons (aged with our measured age curves) '
                  f'plus its 2027-28 picks. You rank <b>{pc.get("my_rank", "—")} of {len(wr)}</b>. The trade plan lifts your players\' window value to '
                  f'<b>{pc.get("after_players", 0):,}</b> and nets <b>{(pc.get("dynasty_total") or 0):+,}</b> in plan value after picks spent.</p>'

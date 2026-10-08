@@ -42,6 +42,8 @@ def main():
     # the week being played next: a game-day read uses THIS week's practice report only (2026-10-08: Smith's week-4
     # DNP was read as this week's, 42%, while weekly.py — correctly — saw no week-5 report yet, 71%)
     cur_wk = ((json.load(open(os.path.join(DATA, season, 'league.json'))).get('settings') or {}).get('last_scored_leg') or 0) + 1
+    _no = os.path.join(DATA, 'news_overrides.json')
+    NEWS_OV = json.load(open(_no)) if os.path.exists(_no) else {}
 
     import weekly as W   # shares its 6-hour cache of nfldata games.csv (first run downloads it here)
     W.fetch(W.GAMES_URL, os.path.join(CACHE, 'games.csv'), 6 * 3600)
@@ -90,6 +92,12 @@ def main():
             k = f"{st}|{this_wk or 'none'}"
             g = eff['gameday'].get(k) or eff['gameday'].get(f'{st}|none') or {}
             row['p_play'] = g.get('p_play')
+            nv = (NEWS_OV.get(pid) or {})                  # a same-week news report outranks the feed (data/news_overrides.json, as in weekly.py)
+            if nv and nv.get('week') == cur_wk and nv.get('p_play') is not None:
+                row['p_play'] = nv['p_play']
+                row['read'] = f"plays {row['p_play']:.0%} (news: {nv.get('note', '')})"
+                rows.append(row)
+                continue
             row['read'] = ((f"plays {row['p_play']:.0%} of the time with that practice status" if this_wk else
                             f"plays {row['p_play']:.0%} of the time (no practice report yet this week)") if row['p_play'] is not None else '')
         elif st in OUT_STATUSES:
