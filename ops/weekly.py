@@ -39,6 +39,7 @@ K_SHRINK, K_FORM = 300, 3
 SLEEPER_TO_NV = {'LAR': 'LA'}
 INJ = {}   # measured game-day odds by status|practice, loaded in live()
 NEWS = {}  # same-day report overrides, data/news_overrides.json
+COV = {}   # defense -> best corner + hot flag, data/coverage.json (ops/coverage.py)
 MARKET = ('implied', 'matchup')
 CONDITIONS = ('wind', 'temp', 'precip', 'rest', 'travel', 'backup_qb')
 # Extremes only: the backtest (2026-10-02) showed blanket multipliers HURT — Sleeper already prices
@@ -295,6 +296,9 @@ def live():
     global NEWS
     _np = os.path.join(DATA, 'news_overrides.json')    # {sleeper_id: {"p_play": 0.2, "note": "...", "week": 4}}
     NEWS = json.load(open(_np)) if os.path.exists(_np) else {}
+    global COV
+    _cp = os.path.join(DATA, 'coverage.json')
+    COV = json.load(open(_cp)).get('defenses', {}) if os.path.exists(_cp) else {}
     _ip = os.path.join(DATA, 'injury_effects.json')
     global INJ
     INJ = json.load(open(_ip))['gameday'] if os.path.exists(_ip) else {}
@@ -343,8 +347,11 @@ def live():
                 row['flags'].append(aflag)
             status = p.get('injury_status')
             pr = prac.get(pid, {})
-            if status in out_status or pr.get('report') == 'Out':
-                proj, why = 0.0, f"OUT ({pr.get('injury') or p.get('injury_body_part') or status})"
+            nv0 = NEWS.get(pid) or {}
+            ruled_out = nv0.get('week') == week and nv0.get('p_play') == 0     # a news report that he's been ruled out (2026-10-09)
+            if status in out_status or pr.get('report') == 'Out' or ruled_out:
+                proj, why = 0.0, (f"OUT (news: {nv0.get('note', '')})" if ruled_out and not (status in out_status or pr.get('report') == 'Out')
+                                  else f"OUT ({pr.get('injury') or p.get('injury_body_part') or status})")
                 row['flags'].append(why)
             elif status in ('Doubtful', 'Questionable') or pr.get('report') in ('Doubtful', 'Questionable'):
                 # Measured game-day odds (ops/injury_study.py): how often players with this status and
@@ -362,6 +369,12 @@ def live():
                     row['p_play'] = nv['p_play']
                     row['flags'].append(f"news: {nv['note']} — {nv['p_play']:.0%}")
                 row['flags'].append(f"{st_} ({pr.get('practice') or 'no practice report yet'}) — plays {row['p_play']:.0%} historically")
+            # hot corner (ops/coverage.py): shown, NOT priced — the 2025 dip for WRs facing one reversed in 2024 (2026-10-09)
+            cd = COV.get(ctx['opp']) if pos == 'WR' else None
+            if cd and cd.get('hot'):
+                b_ = cd['best']
+                row['flags'].append(f"faces hot corner {b_['name']} ({b_['last3_ypt']} yds/target over his last 3, "
+                                    f"{b_['ypt']} season) — info only, no measured effect")
             w = ctx['weather']
             if isinstance(w, dict) and (w['wind'] >= 15 or w['snow'] >= 0.5 or w['rain'] >= 5):
                 row['flags'].append(f"weather: {w['wind']:.0f} mph wind, {w['temp']:.0f}F"
