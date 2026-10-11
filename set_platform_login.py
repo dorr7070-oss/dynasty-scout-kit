@@ -41,6 +41,22 @@ ESPN private league — copy two cookies from your browser (about 2 minutes):
     print('Now run the update again; Claude will read your league.')
 
 
+def code_from_chrome(redirect):
+    """Mac + Chrome: read the newest Yahoo redirect address straight from Chrome's tabs (nothing to copy)."""
+    import subprocess
+    script = ('tell application "Google Chrome" to get URL of every tab of every window')
+    try:
+        out = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=20).stdout
+    except (OSError, subprocess.SubprocessError):
+        out = ''
+    hits = [u.strip() for u in out.replace('\n', ',').split(',') if u.strip().startswith(redirect) and 'code=' in u]
+    if not hits:
+        sys.exit('Could not find the Yahoo address in Chrome. Open the link in Chrome, then run this again '
+                 '(or paste the address instead of pressing Enter).')
+    print(' Found the Yahoo address in Chrome.')
+    return hits[-1]
+
+
 def yahoo():
     print('''
 Yahoo league — a one-time setup (about 5 minutes):
@@ -70,7 +86,9 @@ Yahoo league — a one-time setup (about 5 minutes):
         {'client_id': cid, 'redirect_uri': redirect, 'response_type': 'code'})
     print(f'\n 4. Open this link and click "Agree". Your browser then shows an error page ("can\'t be reached").')
     print(f'    That is expected: copy the WHOLE address from the address bar and paste it below.\n\n    {url}\n')
-    code = getpass.getpass('Address (or code) from Yahoo: ').strip()
+    code = getpass.getpass('Address (or code) from Yahoo — on a Mac with Chrome, just press Enter: ').strip()
+    if not code:
+        code = code_from_chrome(redirect)
     if 'code=' in code:
         code = urllib.parse.parse_qs(urllib.parse.urlparse(code).query).get('code', [''])[0]
     body = urllib.parse.urlencode({'grant_type': 'authorization_code', 'code': code, 'redirect_uri': redirect}).encode()
