@@ -46,18 +46,23 @@ def yahoo():
 Yahoo league — a one-time setup (about 5 minutes):
  1. Go to https://developer.yahoo.com/apps/create/ (log in with the Yahoo account that's in the league).
  2. Create an app: any name; Application Type "Confidential Client" or "Installed Application";
-    Redirect URI "oob"; API Permissions: tick "Fantasy Sports" -> "Read". Create.
+    Homepage URL and Redirect URI both: https://localhost:8080/  (Yahoo no longer accepts "oob");
+    API Permissions: tick "Fantasy Sports" -> "Read". Create.
  3. Copy the Client ID and Client Secret it shows, and paste them below (hidden).
 ''')
     cid = getpass.getpass('Client ID: ').strip()
     secret = getpass.getpass('Client Secret: ').strip()
     if not cid or not secret:
         sys.exit('Both values are needed — nothing saved.')
+    redirect = 'https://localhost:8080/'
     url = 'https://api.login.yahoo.com/oauth2/request_auth?' + urllib.parse.urlencode(
-        {'client_id': cid, 'redirect_uri': 'oob', 'response_type': 'code'})
-    print(f'\n 4. Open this link, click "Agree", and copy the code Yahoo shows:\n\n    {url}\n')
-    code = getpass.getpass('Code from Yahoo: ').strip()
-    body = urllib.parse.urlencode({'grant_type': 'authorization_code', 'code': code, 'redirect_uri': 'oob'}).encode()
+        {'client_id': cid, 'redirect_uri': redirect, 'response_type': 'code'})
+    print(f'\n 4. Open this link and click "Agree". Your browser then shows an error page ("can\'t be reached").')
+    print(f'    That is expected: copy the WHOLE address from the address bar and paste it below.\n\n    {url}\n')
+    code = getpass.getpass('Address (or code) from Yahoo: ').strip()
+    if 'code=' in code:
+        code = urllib.parse.parse_qs(urllib.parse.urlparse(code).query).get('code', [''])[0]
+    body = urllib.parse.urlencode({'grant_type': 'authorization_code', 'code': code, 'redirect_uri': redirect}).encode()
     auth = base64.b64encode(f'{cid}:{secret}'.encode()).decode()
     req = urllib.request.Request('https://api.login.yahoo.com/oauth2/get_token', data=body,
                                  headers={'Authorization': f'Basic {auth}',
@@ -68,7 +73,7 @@ Yahoo league — a one-time setup (about 5 minutes):
     except urllib.error.HTTPError as e:
         sys.exit(f'Yahoo refused the code (HTTP {e.code}). Codes expire fast — run this again and paste a fresh one.')
     save('yahoo', {'client_id': cid, 'client_secret': secret, 'access_token': tok['access_token'],
-                   'refresh_token': tok['refresh_token'], 'expires_at': time.time() + int(tok.get('expires_in', 3600))})
+                   'refresh_token': tok['refresh_token'], 'redirect_uri': redirect, 'expires_at': time.time() + int(tok.get('expires_in', 3600))})
     print('Yahoo login saved. Now run the update again; Claude will read your league.')
 
 

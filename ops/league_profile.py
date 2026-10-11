@@ -155,7 +155,7 @@ def yahoo_token():
     if y.get('expires_at', 0) > time.time() + 60:
         return y['access_token']
     body = urllib.parse.urlencode({'grant_type': 'refresh_token', 'refresh_token': y['refresh_token'],
-                                   'redirect_uri': 'oob'})
+                                   'redirect_uri': y.get('redirect_uri', 'oob')})
     import base64
     basic = base64.b64encode(f"{y['client_id']}:{y['client_secret']}".encode()).decode()
     r = subprocess.run(['curl', '-s', '-m', '40', '-X', 'POST', '-H', f'Authorization: Basic {basic}',
