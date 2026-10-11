@@ -50,10 +50,21 @@ Yahoo league — a one-time setup (about 5 minutes):
     API Permissions: tick "Fantasy Sports" -> "Read". Create.
  3. Copy the Client ID and Client Secret it shows, and paste them below (hidden).
 ''')
-    cid = getpass.getpass('Client ID: ').strip()
-    secret = getpass.getpass('Client Secret: ').strip()
-    if not cid or not secret:
-        sys.exit('Both values are needed — nothing saved.')
+    prev = {}
+    try:
+        with open(os.path.join(DIR, 'yahoo.json'), encoding='utf-8') as f:
+            prev = json.load(f)
+    except (OSError, ValueError):
+        pass
+    if prev.get('client_id') and prev.get('client_secret'):
+        print(' Using the Client ID and Secret you already saved (delete ~/.config/dynasty-scout/yahoo.json to start over).')
+        cid, secret = prev['client_id'], prev['client_secret']
+    else:
+        cid = getpass.getpass('Client ID: ').strip()
+        secret = getpass.getpass('Client Secret: ').strip()
+        if not cid or not secret:
+            sys.exit('Both values are needed — nothing saved.')
+        save('yahoo', {'client_id': cid, 'client_secret': secret})
     redirect = 'https://localhost:8080/'
     url = 'https://api.login.yahoo.com/oauth2/request_auth?' + urllib.parse.urlencode(
         {'client_id': cid, 'redirect_uri': redirect, 'response_type': 'code'})
@@ -71,7 +82,8 @@ Yahoo league — a one-time setup (about 5 minutes):
         with urllib.request.urlopen(req, timeout=30) as r:
             tok = json.load(r)
     except urllib.error.HTTPError as e:
-        sys.exit(f'Yahoo refused the code (HTTP {e.code}). Codes expire fast — run this again and paste a fresh one.')
+        why = e.read().decode('utf-8', 'replace')[:300]
+        sys.exit(f'Yahoo refused the code (HTTP {e.code}): {why}\nRun this again and paste a fresh address (your ID and Secret are kept).')
     save('yahoo', {'client_id': cid, 'client_secret': secret, 'access_token': tok['access_token'],
                    'refresh_token': tok['refresh_token'], 'redirect_uri': redirect, 'expires_at': time.time() + int(tok.get('expires_in', 3600))})
     print('Yahoo login saved. Now run the update again; Claude will read your league.')

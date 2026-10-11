@@ -149,7 +149,7 @@ YAHOO_FLEX = {'W/R/T': 'FLEX', 'W/R': 'WRRB_FLEX', 'W/T': 'REC_FLEX', 'Q/W/R/T':
 def yahoo_token():
     """Refresh the owner's Yahoo OAuth token (saved by set_platform_login.py yahoo)."""
     y = login('yahoo')
-    if not y:
+    if not y or not y.get('refresh_token'):
         raise SystemExit('league_profile: Yahoo needs a one-time login. Run "python set_platform_login.py yahoo" '
                          '(see ONBOARDING.md), then run this again.')
     if y.get('expires_at', 0) > time.time() + 60:
