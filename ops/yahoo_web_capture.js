@@ -1,7 +1,7 @@
 // Read a Yahoo fantasy league from its web pages in the owner's signed-in browser (docs/YAHOO_WEB.md).
 // Run in a tab on football.fantasysports.yahoo.com; then read the page text and save it as
 // data/yahoo_web/snapshot.json.
-const LID = '715712', TEAMS = 12, WEEKS = 6;
+const LID = 'YOUR_LEAGUE_ID', TEAMS = 12, WEEKS = 14;   // set LID from the league link; WEEKS = last regular-season week
 const g = async u => new DOMParser().parseFromString(await fetch(u, {credentials: 'include'}).then(r => r.text()), 'text/html');
 const T = s => (s || '').replace(/\s+/g, ' ').trim();
 const ds = {league_id: LID, captured: new Date().toISOString(), teams: [], standings: [], weeks: {}, trades: []};

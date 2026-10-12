@@ -5,7 +5,7 @@ Why: since mid-2026 Yahoo answers every Fantasy API call from a new developer ap
 "This application is not authorized" until Yahoo approves the app by hand (reported 2-4 weeks).
 The league's own pages still show everything, so Claude reads them in the owner's logged-in
 browser and saves data/yahoo_web/snapshot.json (+ settings.json). This file translates that
-snapshot. Built 2026-10-11 on league 715712.
+snapshot. Built 2026-10-11 on a live 12-team Yahoo league.
 
 snapshot.json shape (written by the browser capture in docs/YAHOO_WEB.md):
   teams:     [{tid, name, manager, players: [[slot, yahoo_id, name, nfl_team, pos, status], ...]}]
