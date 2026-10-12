@@ -105,7 +105,8 @@ for r in rosters:
     teams[uid] = {'user': uid_user.get(uid), 'team': uid_team.get(uid),
                   'by_pos': by_pos, 'starter_val': starter_val, 'depth_val': depth_val,
                   'pick_share': prof.get('tendencies', {}).get('pick_share', 10),
-                  'labels': prof.get('labels', [])}
+                  'labels': prof.get('labels', []),
+                  'record': prof.get('tendencies', {}).get('record'), 'race_rank': prof.get('tendencies', {}).get('race_rank')}
 
 me_uid = next(u for u, t in teams.items() if t['user'] == CFG['my_username'])
 me = teams[me_uid]
@@ -195,7 +196,7 @@ if PROJ:
         lines.append(f"| {pos} | {me['starter_val'][pos]:,.0f} | "
                      f"#{rank(me_uid, 'starter_val', pos)} of {LF.NUM_TEAMS} | {pts:.1f} | "
                      f"#{prk} of {LF.NUM_TEAMS} | #{rank(me_uid, 'depth_val', pos)} |")
-    lines += ['', f"**Dynasty-value holes:** {', '.join(holes_val) or 'none'} · "
+    lines += ['', f"**{'Rest-of-season value' if LF.REDRAFT else 'Dynasty-value'} holes:** {', '.join(holes_val) or 'none'} · "
               f"**This-season scoring holes:** {', '.join(holes_pts) or 'none'} · "
               f"**Tradeable depth:** {', '.join(surplus) or 'none'}", '']
     only_val = [p for p in holes_val if p not in holes_pts]
@@ -282,7 +283,7 @@ for pos in holes:
     lanes.sort(key=lambda x: x[0], reverse=True)
     why = ''
     if PROJ:
-        tags = (['dynasty value'] if pos in holes_val else []) + \
+        tags = (['rest-of-season value' if LF.REDRAFT else 'dynasty value'] if pos in holes_val else []) + \
                (['2026 points'] if pos in holes_pts else [])
         why = f" — hole on {' + '.join(tags)}"
     lines.append(f'### {pos}{why}')
@@ -305,8 +306,9 @@ for pos in holes:
             parts.append(s + ')')
         will = ('likely seller' if mot >= SELLER_SHARE else
                 'possible seller' if mot >= 9 else 'reluctant — will charge a premium')
-        lines.append(f"- **{t['team']}** ({t['user']}): {', '.join(parts)} — {will} "
-                     f"({mot}% of assets in picks)")
+        why_txt = (f"{t.get('record')}, #{t.get('race_rank')} in the standings" if LF.REDRAFT
+                   else f"{mot}% of assets in picks")
+        lines.append(f"- **{t['team']}** ({t['user']}): {', '.join(parts)} — {will} ({why_txt})")
     lines.append('')
 if any(is_seller(t) for u, t in teams.items() if u != me_uid):
     lines += ['_`THEIR STARTER` = the player that team actually starts. Only shown for '
@@ -314,23 +316,28 @@ if any(is_seller(t) for u, t in teams.items() if u != me_uid):
               'premium, but this is where the real upgrades live._', '']
 
 # sell lanes
-allin = sorted(((t['pick_share'], uid) for uid, t in teams.items() if uid != me_uid))
+allin = sorted(((t.get('race_rank') or 99, uid) if LF.REDRAFT else (t['pick_share'], uid)
+                for uid, t in teams.items() if uid != me_uid))
 buyers = [uid for _, uid in allin[:3]]
 oldies = [p for pos in STARTERS for p in me['by_pos'][pos]
           if (players[p].get('age') or 0) >= 29 and pv(p) >= 1200]
-lines += ['## Sell lanes (my aging/sell-high assets → all-in buyers)', '']
+if LF.REDRAFT:   # age doesn't matter in redraft: sell BENCH value at positions that aren't holes
+    oldies = [p for pos in STARTERS if pos not in holes_val and pos not in holes_pts
+              for p in me['by_pos'][pos][STARTERS[pos]:] if pv(p) >= 600]
+lines += ['## Sell lanes (' + ('surplus/sell-high → contenders' if LF.REDRAFT else 'my aging/sell-high assets → all-in buyers') + ')', '']
 if oldies:
     for p in sorted(oldies, key=lambda x: -pv(x)):
         pl = players[p]
         lines.append(f"- **{pl.get('full_name')}** ({pl.get('age')}, {pv(p):,.0f}) — "
                      f"buyers: " + ', '.join(teams[b]['team'] for b in buyers))
 else:
-    lines.append('- No obvious age-29+ sell candidates.')
+    lines.append('- No spare bench value at a position you can afford to thin.' if LF.REDRAFT
+                 else '- No obvious age-29+ sell candidates.')
 lines.append('')
 
 # sell-high flags (crowd >> trades)
 flags = []
-for pos in STARTERS:
+for pos in ([] if LF.REDRAFT else STARTERS):   # redraft: KTC's board is PPR, FC's is this league's scoring — gaps are scoring, not hype
     for p in me['by_pos'][pos]:
         fc, ktc = srcval(p, 'FantasyCalc'), srcval(p, 'KeepTradeCut')
         if fc and ktc and ktc - fc >= 1500 and pv(p) >= 1500:

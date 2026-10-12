@@ -180,13 +180,18 @@ traded = load(latest, 'traded_picks.json') or []
 rid_uid = {r['roster_id']: r.get('owner_id') for r in rosters}
 pick_owner = {}
 future = [str(int(latest) + 1), str(int(latest) + 2)]
-for rid in rid_uid:
+for rid in ([] if LF.REDRAFT or not LF.PICK_TRADING else rid_uid):   # redraft: no picks to own
     for season in future:
         for rnd in range(1, int(LF.PROFILE.get('rookie_draft_rounds') or 3) + 1):
             pick_owner[(season, rnd, rid)] = rid
 for t in traded:
     if t['season'] in future:
         pick_owner[(t['season'], t['round'], t['roster_id'])] = t['owner_id']
+# redraft: the race decides who sells. Rank by wins, then points for.
+_rk = sorted(rosters, key=lambda r: (-(r.get('settings') or {}).get('wins', 0),
+                                     -(r.get('settings') or {}).get('fpts', 0)))
+RACE = {r.get('owner_id'): (i + 1, '{wins}-{losses}'.format(**{'wins': 0, 'losses': 0, **(r.get('settings') or {})}))
+        for i, r in enumerate(_rk)}
 for r in rosters:
     uid = r.get('owner_id')
     if not uid:
@@ -219,6 +224,12 @@ def tendencies(o):
     t['roster_value'] = round(roster_val)
     t['pick_value'] = pick_val
     t['pick_share'] = round(pick_val / (roster_val + pick_val) * 100, 1) if roster_val else 0
+    if LF.REDRAFT:
+        # no picks in redraft: 'pick_share' becomes a sell score from the standings so every
+        # 'likely seller' rule downstream reads the race instead (rank 9+ of 12 = likely seller)
+        rank, rec = RACE.get(o.uid if hasattr(o, 'uid') else None, (0, ''))
+        t['race_rank'], t['record'] = rank, rec
+        t['pick_share'] = max(0, rank - LF.PLAYOFF_TEAMS) * 6
     ages = [page(p) for p in o.current_roster if page(p)]
     vals = [(pval(p), page(p)) for p in o.current_roster if page(p) and pval(p)]
     t['core_age'] = round(sum(v * a for v, a in vals) / sum(v for v, _ in vals), 1) if vals else None
@@ -242,6 +253,11 @@ def labels(o, t):
             out.append('win-now buyer — ages up in trades')
     if t['faab_per_season'] >= 60:
         out.append('aggressive FAAB spender')
+    if LF.REDRAFT:
+        rank = t.get('race_rank') or 0
+        out.append('window: out of the race — likely seller' if rank > LF.PLAYOFF_TEAMS + 2 else
+                   'window: on the bubble' if rank > LF.PLAYOFF_TEAMS - 2 else 'window: contender — buyer')
+        return out
     if t['pick_share'] >= 18:
         out.append('window: accumulating (rebuild/2-year build)')
     elif t['pick_share'] <= 7:

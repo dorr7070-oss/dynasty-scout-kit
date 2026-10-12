@@ -51,6 +51,21 @@ def fetch(url):
     return r.stdout
 
 
+_SC = (LF.PROFILE.get('scoring') or {})
+CUSTOM = bool(_SC.get('pass_yd_per_pt') or _SC.get('rush_rec_yd_per_pt'))   # league scoring differs from Sleeper's presets
+
+
+def custom_points(st):
+    """Points in THIS league's scoring from Sleeper's projected stat line (yardage bonuses left out:
+    projections are averages, so a 100-yard bonus can't be read off them)."""
+    g = lambda k: float(st.get(k) or 0)
+    return (g('pass_yd') / float(_SC.get('pass_yd_per_pt') or 25) + g('pass_td') * float(_SC.get('pass_td') or 4)
+            + g('pass_int') * float(_SC.get('int', -1))
+            + (g('rush_yd') + g('rec_yd')) / float(_SC.get('rush_rec_yd_per_pt') or 10)
+            + (g('rush_td') + g('rec_td')) * 6 + g('rec') * float(_SC.get('rec') or 0)
+            + (g('pass_2pt') + g('rush_2pt') + g('rec_2pt')) * 2 + g('fum_lost') * float(_SC.get('fumble_lost', -2)))
+
+
 def weekly_projections(season):
     proj = {}
     q = '&'.join(f'position[]={p}' for p in POS)
@@ -60,6 +75,8 @@ def weekly_projections(season):
             st = x['stats']
             # league scoring: full / half / no PPR, plus any TE premium per catch
             pts = st.get('pts_ppr') if LF.PPR >= 1 else st.get('pts_half_ppr') if LF.PPR >= 0.5 else st.get('pts_std')
+            if CUSTOM and st.get('pts_std') is not None:
+                pts = custom_points(st)
             if pts is not None and LF.TE_PREMIUM and (x.get('player') or {}).get('position') == 'TE':
                 pts += LF.TE_PREMIUM * (st.get('rec') or 0)
             if pts is not None:
@@ -76,7 +93,7 @@ def cached_projections(season, refetch=False):
     if not refetch and os.path.exists(CACHE) \
             and time.time() - os.path.getmtime(CACHE) < CACHE_TTL:
         blob = json.load(open(CACHE))
-        if blob.get('season') == season and blob.get('scoring', [1.0, 0.0]) == [LF.PPR, LF.TE_PREMIUM]:
+        if blob.get('season') == season and blob.get('scoring', [1.0, 0.0]) == [LF.PPR, LF.TE_PREMIUM, CUSTOM]:
             print(f'  sleeper projections cached (<3d, {len(blob["proj"])} players)')
             return {pid: {int(w): v for w, v in wks.items()}
                     for pid, wks in blob['proj'].items()}
@@ -114,6 +131,12 @@ def main(refetch=False):
     weekly = {rid: {} for rid in roster}      # rid -> {week: lineup pts}
     schedule = {rid: [] for rid in roster}    # rid -> [{wk, opp, pts, opp_pts}]
 
+    lg = json.load(open(os.path.join(DATA, latest, 'league.json')))
+    # the last week whose games are all final: the league's current leg minus one while games are live
+    LAST_FINAL = max([int(w) for w, es in matchups.items()
+                      if es and all(e.get('points') for e in es)] + [0])
+    if LAST_FINAL and LAST_FINAL >= int((lg.get('settings') or {}).get('last_scored_leg') or 0):
+        LAST_FINAL -= 1   # newest scored week may still be in progress
     for wk in REG_WEEKS:
         entries = matchups.get(str(wk), [])
         pts = {e['roster_id']: lineup_points(roster.get(e['roster_id'], []), wk, proj, pos_of)
@@ -132,6 +155,9 @@ def main(refetch=False):
             seen.add(mid)
             orid = opp['roster_id']
             a, b = pts[rid], pts[orid]
+            # a week already played counts as it actually finished, not as projected
+            if wk <= LAST_FINAL and e.get('points') and opp.get('points'):
+                a, b = float(e['points']), float(opp['points'])
             wins[rid if a >= b else orid] += 1
             schedule[rid].append({'wk': wk, 'opp': orid, 'pts': round(a, 2),
                                   'opp_pts': round(b, 2)})

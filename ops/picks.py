@@ -288,6 +288,8 @@ def owned_future_picks():
     override = {(t['season'], t['round'], t['roster_id']): t['owner_id']
                 for t in traded if t['season'] in FUTURE}
     owned = {r['roster_id']: [] for r in rosters}
+    if LF.REDRAFT or not LF.PICK_TRADING:   # no rookie draft / no pick trading: nobody owns tradeable picks
+        return owned
     for season in FUTURE:
         for rnd in ROUNDS:
             for orig in owned:

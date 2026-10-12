@@ -113,9 +113,15 @@ def main():
             from adapters import espn
             espn.fetch(DATA, CFG, profile, save, players)
         elif platform == 'yahoo':
-            from adapters import yahoo
+            from adapters import yahoo, yahoo_web
             import league_profile
-            yahoo.fetch(DATA, CFG, profile, save, players, league_profile.yahoo_token())
+            try:
+                yahoo.fetch(DATA, CFG, profile, save, players, league_profile.yahoo_token())
+            except SystemExit as e:
+                if not yahoo_web.available(DATA):
+                    raise
+                print(f'  {e} — using the league pages read from the Yahoo website')
+                yahoo_web.fetch(DATA, CFG, profile, save, players)
         else:
             sys.exit(f'fetch.py: unknown platform "{platform}" in config.json')
         print('done -> data/')

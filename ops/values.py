@@ -146,7 +146,7 @@ def main():
     # element and parses it at runtime. Read the element first, keep the old
     # inline form as a fallback — and if BOTH miss, say so instead of silently
     # dropping a source from the consensus.
-    html = fetch(f'https://keeptradecut.com/dynasty-rankings?format={LF.KTC_FORMAT}')
+    html = fetch(f'https://keeptradecut.com/{"fantasy-rankings" if LF.REDRAFT else "dynasty-rankings"}?format={LF.KTC_FORMAT}')
     m = (re.search(r'<script[^>]*id="ktc-players"[^>]*>(.*?)</script>', html, re.S)
          or re.search(r'var playersArray = (\[.*?\]);', html, re.S))
     ktc = {}
@@ -186,7 +186,8 @@ def main():
 
     # DynastyProcess
     dp = {}
-    txt = fetch('https://raw.githubusercontent.com/dynastyprocess/data/master/files/values.csv')
+    # DynastyProcess is dynasty-only: skipped in a redraft league
+    txt = '' if LF.REDRAFT else fetch('https://raw.githubusercontent.com/dynastyprocess/data/master/files/values.csv')
     dp_scraped = ''
     for row in csv.DictReader(txt.splitlines()):
         sid = resolve(row['player'], row.get('pos'), row.get('team'))
@@ -236,8 +237,12 @@ def main():
 
     # FantasyPros ECR -> rank-values (already a ranking source)
     fpr = {}
-    html = fetch('https://www.fantasypros.com/nfl/rankings/'
-                 + ('dynasty-superflex.php' if LF.SUPERFLEX else 'dynasty-overall.php'))
+    if LF.REDRAFT:   # rest-of-season ranks in the league's scoring
+        fp_page = {0: 'ros-overall.php', 0.5: 'ros-half-point-ppr-overall.php'}.get(
+            1 if LF.PPR >= 1 else (0.5 if LF.PPR >= 0.5 else 0), 'ros-ppr-overall.php')
+    else:
+        fp_page = 'dynasty-superflex.php' if LF.SUPERFLEX else 'dynasty-overall.php'
+    html = fetch('https://www.fantasypros.com/nfl/rankings/' + fp_page)
     m = re.search(r'var ecrData = (\{.*?\});', html, re.S)
     if m:
         for p in json.loads(m.group(1)).get('players', []):

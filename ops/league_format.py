@@ -74,6 +74,8 @@ PICK_TRADING = PROFILE.get('pick_trading', True)
 # bottom third of the league = a positional "hole" (was a hard-coded rank >= 9 of 12)
 HOLE_RANK = NUM_TEAMS - NUM_TEAMS // 3 + 1
 KTC_FORMAT = 2 if SUPERFLEX else 1
+# Redraft league (no keepers): every value is THIS SEASON only — no age, no picks, no future years.
+REDRAFT = PROFILE.get('league_type') == 'redraft' and not CFG.get('treat_as_dynasty')
 DRAFT_ORDER = CFG.get('draft_order') or PROFILE.get('draft_order') or {'rule': 'reverse_record'}
 
 
@@ -93,7 +95,7 @@ def ktc_value(p):
 
 def fantasycalc_url():
     ppr = 1 if PPR >= 1 else (0.5 if PPR >= 0.5 else 0)
-    return (f'https://api.fantasycalc.com/values/current?isDynasty=true&numQbs={2 if SUPERFLEX else 1}'
+    return (f'https://api.fantasycalc.com/values/current?isDynasty={"false" if REDRAFT else "true"}&numQbs={2 if SUPERFLEX else 1}'
             f'&numTeams={NUM_TEAMS}&ppr={ppr}')
 
 

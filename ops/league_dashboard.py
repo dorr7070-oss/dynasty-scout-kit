@@ -753,7 +753,7 @@ def build():
     # picks
     picklist = sorted(OWNED.get(my_rid, []))
     pv = [(f"{s} {pick_value(s, rnd, orig)[1]} {PK._RN[rnd]}", pick_value(s, rnd, orig)[0]) for s, rnd, orig in picklist]
-    mxp = max([v for _, v in pv] or [1])
+    mxp = max([v for _, v in pv] + [1e-9]) or 1
     O.append('<h3 style="margin-top:14px">Picks</h3>')
     for lab, v in pv:
         O.append(f'<div class="srow"><span class="pos" style="width:auto;min-width:8.5em">{esc(lab)}</span>'

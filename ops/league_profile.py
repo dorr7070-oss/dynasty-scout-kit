@@ -170,12 +170,26 @@ def yahoo_token():
     return y['access_token']
 
 
+def read_yahoo_web(lid, why):
+    """Settings read from the league's settings PAGE (data/yahoo_web/settings.json, see adapters/yahoo_web.py)."""
+    path = os.path.join(DATA, 'yahoo_web', 'settings.json')
+    if not os.path.exists(path):
+        raise SystemExit(f'league_profile: {why}, and no web-page read saved yet (data/yahoo_web/settings.json). '
+                         f'Ask Claude to read the league from the Yahoo website (docs/YAHOO_WEB.md).')
+    p = {k: v for k, v in json.load(open(path, encoding='utf-8')).items() if not k.startswith('_')}
+    print(f'league_profile: {why} — using the settings read from the Yahoo website')
+    return p
+
+
 def read_yahoo(lid):
-    tok = yahoo_token()
+    try:
+        tok = yahoo_token()
+    except SystemExit as e:
+        return read_yahoo_web(lid, str(e))
     code, d = curl_json(f'https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.{lid}/settings?format=json',
                         {'Authorization': f'Bearer {tok}'})
     if code != 200 or not d:
-        raise SystemExit(f'league_profile: Yahoo returned HTTP {code} for league {lid}')
+        return read_yahoo_web(lid, f'Yahoo API returned HTTP {code} (new apps need Yahoo approval since 2026)')
     lg = d['fantasy_content']['league']
     meta, st = lg[0], lg[1]['settings'][0]
     core = {p: 0 for p in ('QB', 'RB', 'WR', 'TE', 'K', 'DEF')}
@@ -223,12 +237,12 @@ def finish(p, cfg):
     p['draft_order'] = cfg.get('draft_order')
     p['read_at'] = date.today().isoformat()
     unknowns = []
-    if not p['draft_order']:
+    if not p['draft_order'] and p['league_type'] != 'redraft':
         unknowns.append('How is the rookie draft order set? (reverse record / a lottery and how / Max PF / '
                         'playoff finish for playoff teams) — no platform exposes it; it decides every pick value')
     if p['platform'] == 'espn':
         unknowns.append('ESPN has no future-pick trading or taxi squad: pick values are informational only')
-    if p['league_type'] == 'redraft':
+    if p['league_type'] == 'redraft' and cfg.get('treat_as_dynasty'):
         unknowns.append('The platform calls this a redraft league: dynasty values assume players carry over — confirm the league is dynasty/keeper')
     if p['idp_slots']:
         unknowns.append(f"{p['idp_slots']} IDP starting slots: dynasty values here cover offense only")
