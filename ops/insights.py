@@ -142,7 +142,7 @@ def main():
             r = premium.get(a)
             if r is None:
                 continue
-            need = (v + r['surplus']) if isinstance(r, dict) else float(r) * v
+            need = (v + r.get('surplus', 0)) if isinstance(r, dict) else float(r) * v   # {"wins": X}: market floor here
             if target_v < need:          # a core piece only moves at its ransom
                 return False
         return True

@@ -217,7 +217,8 @@ def main():
     for a in [x for x in give_all if x in premium]:
         rule = premium[a]
         surplus = rule.get('surplus') if isinstance(rule, dict) else None
-        need = (gmkt(a) + surplus) if surplus is not None else float(rule) * gval(a)
+        mult = 1.0 if isinstance(rule, dict) else float(rule)   # a {"wins": X} rule is checked in wins below
+        need = (gmkt(a) + surplus) if surplus is not None else mult * gval(a)
         side = 2 if surplus is not None else 1          # compare on market (index 2) or our value (index 1)
         ag_ = lambda x: (P.get(x) or {}).get('age')
         def plan_val(x, s_):                            # value to the owner's plan seasons (dynasty_value.plan_value)
@@ -276,7 +277,7 @@ def main():
             their_after = [p for p in active(r) if pos_of(p) in LF.POS and p not in gp] + ([a] if not a.startswith('pick:') else [])
             tdw = exp_wins(rid, their_after) - base[rid]
             ransom.append({'asset': a, 'asset_label': label(a), 'rule': (f'+{surplus:,.0f} in your favor' if surplus is not None
-                                                                     else f'x{float(rule)}'), 'need': round(need), 'partner': names[rid],
+                                                                     else f'+{wins_need:g} wins' if isinstance(rule, dict) else f'x{float(rule)}'), 'need': round(need), 'partner': names[rid],
                            'playoff': round(playoff.get(rid, 0.5), 3), 'get_labels': [x[3] for x in combo],
                            'value_back': round(got), 'value_given': round(gmkt(a) if surplus is not None else gval(a)), 'their_overpay': round(over),
                            'my_wins': round(dw, 2), 'their_wins': round(tdw, 2), 'basis': BASIS,
