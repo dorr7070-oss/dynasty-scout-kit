@@ -32,7 +32,10 @@ def fetch(data_dir, cfg, profile, save, players):
     season = str(profile.get('season'))
     sid_of = {str(p['yahoo_id']): sid for sid, p in players.items() if p.get('yahoo_id')}
     name_of = {}
-    for sid, p in players.items():
+    rank = lambda p: (0 if p.get('active') else 1, 0 if p.get('team') else 1,
+                      p.get('search_rank') if isinstance(p.get('search_rank'), int) else 10 ** 9)
+    # a retired namesake (e.g. the old WR Kenneth Walker) must never win over the active player
+    for sid, p in sorted(players.items(), key=lambda kv: rank(kv[1])):
         if p.get('full_name') and p.get('position') in ('QB', 'RB', 'WR', 'TE', 'K'):
             name_of.setdefault(re.sub(r'[^a-z]', '', p['full_name'].lower()), sid)
     unmatched = []
