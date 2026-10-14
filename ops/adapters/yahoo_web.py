@@ -101,7 +101,10 @@ def fetch(data_dir, cfg, profile, save, players):
     # wrong: a commissioner can approve two trades in the same minute (2026-10-08 was two trades).
     groups, cur = {}, None
     for i, row in enumerate(snap.get('trades', [])):
-        if row['txt'].startswith(' ') or cur is None:
+        # 'start' = rowspan of the trade's first row (2 = two-team, 3 = three-team); older
+        # snapshots fall back to the leading space that row's text happened to carry
+        first = row.get('start') if 'start' in row else row['txt'].startswith(' ')
+        if first or cur is None:
             cur = f"{i}:" + ((re.search(r'\)\s*(\w{3} \d+, [\d:]+ [ap]m)', row['txt']) or [None, ''])[1])
         groups.setdefault(cur, []).append(row)
     txns = []

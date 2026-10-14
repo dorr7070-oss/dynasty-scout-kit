@@ -35,6 +35,7 @@ for (let w = 1; w <= WEEKS; w++) {
 const tr = await g(`/f1/${LID}/transactions?transactionsfilter=trade`);
 ds.trades = [...tr.querySelectorAll('table tbody tr')].map(r => ({
   txt: T(r.innerText),
+  start: parseInt(r.querySelector('td[rowspan]')?.getAttribute('rowspan') || '0'),   // first row of each trade
   ids: [...r.querySelectorAll('a[href*="/nfl/players/"]')].map(a => a.getAttribute('href').split('/').pop()),
   teams: [...r.querySelectorAll(`a[href^="/f1/${LID}/"]`)].map(a => a.getAttribute('href').split('/').pop()).filter(x => /^\d+$/.test(x)),
 }));
