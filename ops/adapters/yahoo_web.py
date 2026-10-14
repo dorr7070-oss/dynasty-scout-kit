@@ -96,11 +96,14 @@ def fetch(data_dir, cfg, profile, save, players):
             if any(float(pts[i]) for i in (0, 2)):
                 last_week = max(last_week, int(wk))
 
-    # trades: Yahoo lists one row per receiving team; rows with the same timestamp are one trade
-    groups = {}
-    for row in snap.get('trades', []):
-        when = (re.search(r'\)\s*(\w{3} \d+, [\d:]+ [ap]m)', row['txt']) or [None, row['txt'][-20:]])[1]
-        groups.setdefault(when, []).append(row)
+    # trades: Yahoo lists one row per receiving team. The first row of each trade starts with a space
+    # (its own table cell layout); the next unmarked row is the other side. Grouping by timestamp is
+    # wrong: a commissioner can approve two trades in the same minute (2026-10-08 was two trades).
+    groups, cur = {}, None
+    for i, row in enumerate(snap.get('trades', [])):
+        if row['txt'].startswith(' ') or cur is None:
+            cur = f"{i}:" + ((re.search(r'\)\s*(\w{3} \d+, [\d:]+ [ap]m)', row['txt']) or [None, ''])[1])
+        groups.setdefault(cur, []).append(row)
     txns = []
     for when, rows in groups.items():
         adds, rids = {}, set()
